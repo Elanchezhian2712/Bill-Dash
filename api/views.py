@@ -14,8 +14,8 @@ from .models import Invoice, InvoiceItem
 from datetime import datetime
 from django.utils.dateparse import parse_date
 from django.shortcuts import render 
-
-
+from datetime import date
+from django.db.models import Sum, Count
 
 User = get_user_model()
 
@@ -52,7 +52,31 @@ def login_api(request):
 # ------------------------- Protected Views -------------------------
 @login_required
 def dashboard_view(request):
-    return render(request, 'pages/dashboard/dashboard.html')
+    # Get the current date to determine the current month
+    today = date.today()
+    first_day_of_month = today.replace(day=1)
+    total_invoice_count = Invoice.objects.count()
+    total_invoiced_amount_agg = Invoice.objects.aggregate(total=Sum('grand_total'))
+    total_invoiced_amount = total_invoiced_amount_agg['total'] or 0
+    invoices_this_month = Invoice.objects.filter(invoice_date__gte=first_day_of_month)
+    invoices_this_month_count = invoices_this_month.count()
+    amount_this_month_agg = invoices_this_month.aggregate(total=Sum('grand_total'))
+    amount_this_month = amount_this_month_agg['total'] or 0
+    total_clients_count = Invoice.objects.values('buyer_name').distinct().count()
+    buyers_this_month = set(invoices_this_month.values_list('buyer_name', flat=True).distinct())
+    buyers_before_this_month = set(Invoice.objects.filter(invoice_date__lt=first_day_of_month).values_list('buyer_name', flat=True).distinct())
+    new_clients_count = len(buyers_this_month - buyers_before_this_month)
+
+    context = {
+        'total_invoice_count': total_invoice_count,
+        'total_invoiced_amount': total_invoiced_amount,
+        'invoices_this_month_count': invoices_this_month_count,
+        'amount_this_month': amount_this_month,
+        'total_clients_count': total_clients_count,
+        'new_clients_count': new_clients_count
+    }
+
+    return render(request, 'pages/dashboard/dashboard.html', context)
 
 @login_required
 def invoice_view(request):

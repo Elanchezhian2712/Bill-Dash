@@ -1,4 +1,5 @@
 {% load static %}
+{% load humanize %}
 <!DOCTYPE html>
 <html lang="en">
 
@@ -127,12 +128,14 @@
                   </h4>
                   <hr style="margin: 30px 0" />
 
+                  <!-- ================== UPDATED CARDS SECTION ================== -->
                   <div class="row">
                     <div class="col-md-6 mb-4 stretch-card transparent">
                       <div class="card card-tale">
                         <div class="card-body">
                           <p class="mb-4">Total Invoices Created</p>
-                          <p class="fs-30 mb-2">1,256</p>
+                          <!-- BEFORE: <p class="fs-30 mb-2">1,256</p> -->
+                          <p class="fs-30 mb-2">{{ total_invoice_count|intcomma }}</p>
                           <p>All-time count</p>
                         </div>
                       </div>
@@ -141,8 +144,10 @@
                       <div class="card card-dark-blue">
                         <div class="card-body">
                           <p class="mb-4">Total Amount Invoiced</p>
-                          <p class="fs-30 mb-2">₹ 8,45,900</p>
-                          <p>+ ₹ 75,200 this month</p>
+                          <!-- BEFORE: <p class="fs-30 mb-2">₹ 8,45,900</p> -->
+                          <p class="fs-30 mb-2">₹ {{ total_invoiced_amount|floatformat:0|intcomma }}</p>
+                          <!-- BEFORE: <p>+ ₹ 75,200 this month</p> -->
+                          <p>+ ₹ {{ amount_this_month|floatformat:0|intcomma }} this month</p>
                         </div>
                       </div>
                     </div>
@@ -153,8 +158,9 @@
                       <div class="card card-light-blue">
                         <div class="card-body">
                           <p class="mb-4">Invoices This Month</p>
-                          <p class="fs-30 mb-2">82</p>
-                          <p>5.00% increase (30 days)</p>
+                          <!-- BEFORE: <p class="fs-30 mb-2">82</p> -->
+                          <p class="fs-30 mb-2">{{ invoices_this_month_count }}</p>
+                          <p>In {{ "now"|date:"F" }}</p> <!-- Shows current month name, e.g., "October" -->
                         </div>
                       </div>
                     </div>
@@ -162,23 +168,14 @@
                       <div class="card card-light-danger">
                         <div class="card-body">
                           <p class="mb-4">Total Clients Billed</p>
-                          <p class="fs-30 mb-2">147</p>
-                          <p>+ 3 new clients this month</p>
+                          <!-- BEFORE: <p class="fs-30 mb-2">147</p> -->
+                          <p class="fs-30 mb-2">{{ total_clients_count }}</p>
+                          <!-- BEFORE: <p>+ 3 new clients this month</p> -->
+                          <p>+ {{ new_clients_count }} new clients this month</p>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
-                <!-- card-body -->
-              </div>
-              <!-- card -->
-            </div>
-            <!-- col -->
-          </div>
-          <!-- row -->
-        </div>
-        <!-- content-wrapper -->
-      </div>
       <!-- main-panel -->
     </div>
     <!-- page-body-wrapper -->
