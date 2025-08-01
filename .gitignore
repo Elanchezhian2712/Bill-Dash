@@ -33,8 +33,11 @@ local_settings.py
 # Linux
 *.swp
 
-# pycache leftovers
-**/__pycache__/
+# Ignore Django migration files
+**/migrations/
+!**/migrations/__init__.py
+
+
 
 # Coverage reports
 htmlcov/

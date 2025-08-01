@@ -1,4 +1,5 @@
 import json
+import traceback
 from django.http import JsonResponse
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login, logout, get_user_model
@@ -56,46 +57,46 @@ def dashboard_view(request):
 @login_required
 def invoice_view(request):
     if request.method == 'GET':
-        return render(request, 'pages/invoice/invoice.html')
+        # Get the latest invoice_number
+        latest_invoice = Invoice.objects.order_by('-id').first()
+        
+        if latest_invoice and latest_invoice.invoice_number:
+            try:
+                parts = latest_invoice.invoice_number.split('-')
+                number = int(parts[-1]) + 1
+            except (ValueError, IndexError):
+                number = 1
+        else:
+            number = 1
+        current_year = datetime.now().year
+        next_invoice_number = f"INV/{current_year}-{number:03d}"  
+        
+        return render(request, 'pages/invoice/invoice.html', {
+            'next_invoice_number': next_invoice_number
+        })
 
     elif request.method == 'POST':
         try:
             data = json.loads(request.body)
 
-            # --- START OF VALIDATION AND CLEANING ---
-            
-            # Clean and validate Buyer GSTIN
-            buyer_gstin = data.get('buyer_gstin', '').strip().upper()
-            if buyer_gstin and len(buyer_gstin) != 15:
-                return JsonResponse({'error': f'Invalid Buyer GSTIN. It must be 15 characters long, but it was {len(buyer_gstin)}.'}, status=400)
-            
-            # Clean and validate Seller GSTIN (good practice, even if readonly)
-            seller_gstin = data.get('seller_gstin', '').strip().upper()
-            if len(seller_gstin) != 15:
-                 return JsonResponse({'error': f'Invalid Seller GSTIN. It must be 15 characters long.'}, status=400)
-                 
-            # --- END OF VALIDATION AND CLEANING ---
-
             with transaction.atomic():
-                invoice_date_obj = datetime.strptime(data.get('invoice_date'), '%d-%m-%Y').date()
+                invoice_date_str = data.get('invoice_date')
+                invoice_date_obj = datetime.strptime(invoice_date_str, '%d-%m-%Y').date()
 
                 invoice = Invoice.objects.create(
                     invoice_number=data.get('invoice_number'),
                     invoice_date=invoice_date_obj,
-                    
-                    # Use the cleaned GSTIN values
-                    seller_gstin=seller_gstin,
-                    buyer_gstin=buyer_gstin,
-                    
-                    # The rest of your fields...
                     seller_name=data.get('seller_name'),
                     seller_address=data.get('seller_address'),
+                    seller_gstin=data.get('seller_gstin'),
                     seller_state=data.get('seller_state'),
                     seller_state_code=data.get('seller_state_code'),
                     buyer_name=data.get('buyer_name'),
                     buyer_address=data.get('buyer_address'),
+                    buyer_gstin=data.get('buyer_gstin', ''),
                     place_of_supply=data.get('place_of_supply'),
                     payment_mode=data.get('payment_mode'),
+                    total_bundles=data.get('total_bundles', 0),
                     subtotal=data.get('subtotal'),
                     cgst_total=data.get('cgst_total', 0.00),
                     sgst_total=data.get('sgst_total', 0.00),
@@ -111,7 +112,6 @@ def invoice_view(request):
                     InvoiceItem.objects.create(
                         invoice=invoice,
                         description=item_data.get('description'),
-                        bundles=item_data.get('bundles') or None,
                         hsn_code=item_data.get('hsn_code'),
                         quantity=item_data.get('quantity'),
                         rate=item_data.get('rate'),
@@ -120,16 +120,11 @@ def invoice_view(request):
 
             return JsonResponse({'message': 'Invoice created successfully!', 'invoice_id': invoice.id}, status=201)
 
-        except json.JSONDecodeError:
-            return JsonResponse({'error': 'Invalid JSON data'}, status=400)
-        except KeyError as e:
-            return JsonResponse({'error': f'Missing required field: {str(e)}'}, status=400)
         except Exception as e:
-            # Now this will only catch other unexpected errors
+            traceback.print_exc()
             return JsonResponse({'error': f'An unexpected error occurred: {str(e)}'}, status=500)
 
     return JsonResponse({'error': 'Method not allowed'}, status=405)
-
 
 
 
@@ -144,24 +139,19 @@ def get_invoices_api(request):
     from_date_str = request.GET.get('from_date')
     to_date_str = request.GET.get('to_date')
 
-    print(f"🛎️ API Request: from_date={from_date_str}, to_date={to_date_str}")
-
     invoices = Invoice.objects.all().order_by('-invoice_date')
 
-    # Apply date filtering if dates are provided and valid
     if from_date_str and to_date_str:
         try:
             from_date = parse_date(from_date_str)
             to_date = parse_date(to_date_str)
             if from_date and to_date:
                 invoices = invoices.filter(invoice_date__range=(from_date, to_date))
-                # print(f"📅 Filtering invoices between {from_date} and {to_date}")
             else:
                 print("⚠️ One or both dates couldn't be parsed.")
         except ValueError as e:
             print(f"❌ Error parsing dates: {e}")
 
-    # print(f"📦 Total invoices fetched: {invoices.count()}")
 
     data = [{
         'id': invoice.id,
@@ -170,10 +160,6 @@ def get_invoices_api(request):
         'invoice_date': invoice.invoice_date.strftime('%Y-%m-%d'),
         'grand_total': str(invoice.grand_total),
     } for invoice in invoices]
-
-
-    # for preview in data[:3]:
-    #     print(f"🧾 Invoice: {preview}")
               
     return JsonResponse({'invoices': data})
 
@@ -186,8 +172,8 @@ def logout_view(request):
 
 # ------------------------- Logout: For API Token-based Frontend -------------------------
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])  # requires auth token
+@permission_classes([IsAuthenticated])  
 def logout_api(request):
-    request.user.auth_token.delete()  # delete token
+    request.user.auth_token.delete()  
     logout(request)
     return Response({'detail': 'Successfully logged out.'}, status=status.HTTP_200_OK)
