@@ -16,6 +16,8 @@ from django.utils.dateparse import parse_date
 from django.shortcuts import render 
 from datetime import date
 from django.db.models import Sum, Count
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 
 User = get_user_model()
 
@@ -146,7 +148,6 @@ def generate_invoice_pdf(invoice):
     style_left_bold = ParagraphStyle(name='left_bold', parent=style_normal, fontName='Helvetica-Bold')
 
     # --- Page Frame Drawer (Header/Footer) ---
-        # --- Page Frame Drawer (Header/Footer) ---
     def draw_page_frame(canvas, doc):
         canvas.saveState()
         page_num_str = f" (Page {canvas.getPageNumber()})" if doc.page > 1 else ""
@@ -171,25 +172,14 @@ def generate_invoice_pdf(invoice):
         y -= 0.4 * cm
         canvas.drawString(1.2 * cm, y, f"State Name: {invoice.seller_state}, Code: {invoice.seller_state_code}")
 
-        # ====================================================================
-        # CORRECTED SECTION: Invoice Details Box
-        # This now matches the template from your image exactly.
-        # ====================================================================
+        # Invoice Details Box
         box_left, box_top, box_width, box_height = 10*cm, 27.7*cm, 10*cm, 4.8*cm
         canvas.rect(box_left, box_top - box_height, box_width, box_height)
         col_split = box_left + (box_width / 2)
         row_height = 0.8 * cm
-        
-        # Draw the 6 horizontal lines for the rows
         for i in range(1, 7):
             canvas.line(box_left, box_top - i * row_height, box_left + box_width, box_top - i * row_height)
-        
-        # Draw the vertical dividing line
         canvas.line(col_split, box_top, col_split, box_top - box_height)
-
-        # REVISED: Complete 6-row label data.
-        # We use placeholders "" for data not yet in your models.
-        # You can replace them later if you add these fields to your Invoice model.
         labels = [
             ("Invoice No.", invoice.invoice_number, "Dated", invoice.invoice_date.strftime('%d-%b-%Y')),
             ("Delivery Note", "", "Mode/Terms of Payment", invoice.payment_mode or ""),
@@ -198,12 +188,9 @@ def generate_invoice_pdf(invoice):
             ("Dispatch Doc No.", "", "Delivery Note Date", ""),
             ("Dispatched through", "", "Destination", "")
         ]
-
         canvas.setFont('Helvetica', 8)
         text_padding_x = 4
         text_padding_y = 10
-
-        # Loop to draw all the labels and their values
         for i, (l1, v1, l2, v2) in enumerate(labels):
             y_text = box_top - i * row_height - text_padding_y
             canvas.drawString(box_left + text_padding_x, y_text, l1)
@@ -213,31 +200,21 @@ def generate_invoice_pdf(invoice):
             canvas.drawString(col_split + text_padding_x, y_text, l2)
             canvas.setFont('Helvetica-Bold', 9)
             canvas.drawString(col_split + text_padding_x, y_text - 9, str(v2))
-            # Reset font for the next loop iteration's label
             canvas.setFont('Helvetica', 8)
-            
-        # NEW: Add the 'Terms of Delivery' label below the box
         canvas.drawString(box_left + text_padding_x, (box_top - box_height - 0.4 * cm), "Terms of Delivery")
-        # ====================================================================
-        # END OF CORRECTED SECTION
-        # ====================================================================
 
-
-        # Consignee & Buyer Details (No changes here)
+        # Consignee & Buyer Details
         canvas.rect(1 * cm, 19.8 * cm, 9 * cm, 4.5 * cm, stroke=1, fill=0)
         canvas.line(1 * cm, 22.05 * cm, 10 * cm, 22.05 * cm)
         canvas.setFont('Helvetica', 9)
         canvas.drawString(1.2 * cm, 24 * cm, "Consignee (Ship to)")
         canvas.drawString(1.2 * cm, 21.7 * cm, "Buyer (Bill to)")
-        
-        # Consignee Details
         canvas.setFont('Helvetica-Bold', 10)
         canvas.drawString(1.2 * cm, 23.6 * cm, invoice.buyer_name)
         canvas.setFont('Helvetica', 9)
         canvas.drawString(1.2 * cm, 23.2 * cm, invoice.buyer_address)
         canvas.drawString(1.2 * cm, 22.8 * cm, f"GSTIN/UIN: {invoice.buyer_gstin}")
         canvas.drawString(1.2 * cm, 22.4 * cm, f"Place of Supply: {invoice.place_of_supply}")
-        # Buyer Details
         canvas.setFont('Helvetica-Bold', 10)
         canvas.drawString(1.2 * cm, 21.3 * cm, invoice.buyer_name)
         canvas.setFont('Helvetica', 9)
@@ -245,7 +222,7 @@ def generate_invoice_pdf(invoice):
         canvas.drawString(1.2 * cm, 20.5 * cm, f"GSTIN/UIN: {invoice.buyer_gstin}")
         canvas.drawString(1.2 * cm, 20.1 * cm, f"Place of Supply: {invoice.place_of_supply}")
 
-        # Declaration and Signature Box (No changes here)
+        # Declaration and Signature Box
         page_width = A4[0]
         footer_y = 1.5 * cm
         left_x = 1.2 * cm
@@ -269,7 +246,6 @@ def generate_invoice_pdf(invoice):
         canvas.setFont('Helvetica', 9)
         canvas.drawRightString(right_x + right_box_width - 0.3 * cm, footer_y + 0.4 * cm, "Authorised Signatory")
 
-        # Final Centered Footer Text
         canvas.setFont('Helvetica', 9)
         canvas.drawCentredString(10.5 * cm, 1 * cm, "This is a Computer Generated Invoice")
         
@@ -277,7 +253,7 @@ def generate_invoice_pdf(invoice):
 
     # --- Build Story ---
     story = []
-    story.append(Spacer(1, 8.7 * cm))  # Space for header
+    story.append(Spacer(1, 8.7 * cm))
 
     # Main Items Table
     item_chunks = [invoice_items[i:i + ITEMS_PER_PAGE] for i in range(0, len(invoice_items), ITEMS_PER_PAGE)]
@@ -296,19 +272,11 @@ def generate_invoice_pdf(invoice):
             ]
             table_data.append(row)
 
-                # This is inside the `for i, chunk in enumerate(item_chunks):` loop
         if is_last_page:
-            # --- START OF CORRECTION ---
-            
-            # Get the GST rate from the first item. Assumes rate is consistent.
-            # If items can have different rates, this logic would need to be more complex.
-            # But for this template, a single rate is expected.
             gst_rate = invoice_items[0]['gst_rate'] if invoice_items else D(0)
-
             table_data.append(['', Paragraph("<b>Sub Total</b>", style_right), '', '', '', '', Paragraph(f"<b>{invoice.subtotal:.2f}</b>", style_bold_right)])
             
             if invoice.igst_total > 0:
-                # Add IGST row with percentage
                 table_data.append([
                     '', Paragraph(f"Output Tax IGST @ {gst_rate:.2f}%", style_right),
                     '', '', 
@@ -316,9 +284,7 @@ def generate_invoice_pdf(invoice):
                     Paragraph(f"{invoice.igst_total:.2f}", style_right)
                 ])
             else:
-                # Add CGST and SGST rows with percentages
                 cgst_rate = gst_rate / 2
-                sgst_rate = gst_rate / 2
                 table_data.append([
                     '', Paragraph(f"Output Tax CGST @ {cgst_rate:.2f}%", style_right),
                     '', '',
@@ -326,9 +292,9 @@ def generate_invoice_pdf(invoice):
                     Paragraph(f"{invoice.cgst_total:.2f}", style_right)
                 ])
                 table_data.append([
-                    '', Paragraph(f"Output Tax SGST @ {sgst_rate:.2f}%", style_right),
+                    '', Paragraph(f"Output Tax SGST @ {cgst_rate:.2f}%", style_right),
                     '', '',
-                    Paragraph(f"{sgst_rate:.2f}%", style_right), '%',
+                    Paragraph(f"{cgst_rate:.2f}%", style_right), '%',
                     Paragraph(f"{invoice.sgst_total:.2f}", style_right)
                 ])
 
@@ -336,9 +302,29 @@ def generate_invoice_pdf(invoice):
                 table_data.append(['', Paragraph("Round Off", style_right), '', '', '', '', Paragraph(f"{invoice.round_off:.2f}", style_right)])
             
             total_qty = sum(item['qty'] for item in invoice_items)
-            table_data.append(['', Paragraph("<b>TOTAL</b>", style_bold_right), '', Paragraph(f"<b>{total_qty} Nos</b>", style_bold_right), '', '', Paragraph(f"<b>₹ {invoice.grand_total:.2f}</b>", style_bold_right)])
+            
+            # =========================================================================
+            # THIS IS THE LINE THAT HAS BEEN MANUALLY CHANGED
+            # The '■' character has been replaced with the Rupee symbol '₹'
+            # =========================================================================
+            pdfmetrics.registerFont(TTFont('ArialUnicode', 'Arial Unicode MS.ttf'))
 
-            # --- END OF CORRECTION ---
+            c.setFont('ArialUnicode', 12)
+
+            # The Unicode character for the Rupee symbol is '\u20B9'
+            c.drawString(100, 750, "Price: \u20B9 1234.56")
+
+            table_data.append([
+                '', 
+                Paragraph("<b>TOTAL</b>", style_bold_right), 
+                '', 
+                Paragraph(f"<b>{total_qty} Nos</b>", style_bold_right), 
+                '', 
+                '', 
+                Paragraph(f"<b> Rs. {invoice.grand_total:.2f}</b>", style_bold_right)
+            ])
+            # =========================================================================
+
         item_table = Table(table_data, colWidths=[1.5*cm, 6.8*cm, 2*cm, 2.3*cm, 2.1*cm, 1.3*cm, 3*cm])
         item_table.setStyle(TableStyle([
             ('GRID', (0, 0), (-1, -1), 1, colors.black), ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
@@ -358,7 +344,7 @@ def generate_invoice_pdf(invoice):
     story.append(Paragraph(f"<b>Amount Chargeable (in words)</b><br/>{invoice.total_in_words}", style_normal))
     story.append(Spacer(1, 0.5 * cm))
 
-    # --- Tax Summary Table ---
+    # Tax Summary Table
     is_intra_state = invoice.igst_total == 0
     tax_summary_data = []
     
@@ -381,7 +367,7 @@ def generate_invoice_pdf(invoice):
         if is_intra_state:
             cgst_amount = (taxable_value * (gst_rate / 2) / 100).quantize(D("0.01"))
             total_cgst += cgst_amount
-            total_sgst += cgst_amount # SGST is same as CGST
+            total_sgst += cgst_amount
             row.extend([f"{gst_rate/2:.2f}%", Paragraph(f"{cgst_amount:.2f}", style_right), f"{gst_rate/2:.2f}%", Paragraph(f"{cgst_amount:.2f}", style_right), Paragraph(f"{cgst_amount * 2:.2f}", style_right)])
         else:
             igst_amount = (taxable_value * gst_rate / 100).quantize(D("0.01"))
@@ -402,8 +388,7 @@ def generate_invoice_pdf(invoice):
     tax_summary_table = Table(tax_summary_data, colWidths=col_widths)
     table_styles = [
         ('GRID', (0, 0), (-1, -1), 1, colors.black), ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'), ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
     ]
     if is_intra_state:
         table_styles.extend([('SPAN', (0, 0), (0, 1)), ('SPAN', (1, 0), (1, 1)), ('SPAN', (2, 0), (3, 0)), ('SPAN', (4, 0), (5, 0)), ('SPAN', (6, 0), (6, 1)), ('SPAN', (0, -1), (1, -1))])
