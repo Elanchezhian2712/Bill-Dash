@@ -1,7 +1,7 @@
 import json
 import traceback
-from django.http import JsonResponse
-from django.shortcuts import render, redirect
+from django.http import HttpResponse, JsonResponse
+from django.shortcuts import get_object_or_404, render, redirect
 from django.contrib.auth import authenticate, login, logout, get_user_model
 from django.contrib.auth.decorators import login_required
 from rest_framework.decorators import api_view, permission_classes
@@ -77,7 +77,379 @@ def dashboard_view(request):
     }
 
     return render(request, 'pages/dashboard/dashboard.html', context)
+# -------------------------------
 
+# --- ReportLab Imports ---
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.enums import TA_CENTER, TA_RIGHT, TA_LEFT
+from reportlab.lib import colors
+from reportlab.lib.units import cm
+from reportlab.lib.pagesizes import A4
+from num2words import num2words
+
+import json
+import traceback
+from datetime import datetime
+from decimal import Decimal, ROUND_HALF_UP
+from io import BytesIO
+
+from django.contrib.auth.decorators import login_required
+from django.db import transaction
+from django.http import JsonResponse, HttpResponse
+from django.shortcuts import render, get_object_or_404
+
+
+# ==============================================================================
+#  STEP 1: Refactored PDF Generation Function
+# ==============================================================================
+# api/views.py
+
+# ... (all your other imports)
+def generate_invoice_pdf(invoice):
+    """
+    Generates a complete, multi-page PDF for a given Django Invoice object
+    and returns it as a byte string.
+    """
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        rightMargin=1*cm, leftMargin=1*cm, topMargin=1*cm, bottomMargin=1*cm
+    )
+
+    # --- Configuration and Data Preparation ---
+    ITEMS_PER_PAGE = 15  # Adjust as needed
+    D = Decimal
+
+    invoice_items = []
+    for item in invoice.items.all():
+        amount = item.quantity * item.rate
+        invoice_items.append({
+            "desc": item.description, "hsn": item.hsn_code,
+            "qty": item.quantity, "rate": D(item.rate),
+            "amount": D(amount), "gst_rate": D(item.gst_rate)
+        })
+
+    hsn_summary = {}
+    for item in invoice_items:
+        hsn = item['hsn']
+        if hsn not in hsn_summary:
+            hsn_summary[hsn] = {'taxable_value': D(0), 'gst_rate': item['gst_rate']}
+        hsn_summary[hsn]['taxable_value'] += item['amount']
+
+    # --- Reusable Styles ---
+    styles = getSampleStyleSheet()
+    style_normal = styles['Normal']
+    style_right = ParagraphStyle(name='right', parent=style_normal, alignment=TA_RIGHT)
+    style_bold_right = ParagraphStyle(name='bold_right', parent=style_normal, alignment=TA_RIGHT, fontName='Helvetica-Bold')
+    style_left_bold = ParagraphStyle(name='left_bold', parent=style_normal, fontName='Helvetica-Bold')
+
+    # --- Page Frame Drawer (Header/Footer) ---
+        # --- Page Frame Drawer (Header/Footer) ---
+    def draw_page_frame(canvas, doc):
+        canvas.saveState()
+        page_num_str = f" (Page {canvas.getPageNumber()})" if doc.page > 1 else ""
+
+        # Outer Frame
+        canvas.setLineWidth(1)
+        canvas.rect(1 * cm, 1.5 * cm, A4[0] - 2 * cm, A4[1] - 3.5 * cm)
+
+        # Page Title
+        canvas.setFont('Helvetica-Bold', 16)
+        canvas.drawCentredString(10.5 * cm, 28 * cm, f"Tax Invoice{page_num_str}")
+
+        # Seller Details
+        canvas.setFont('Helvetica-Bold', 10)
+        canvas.drawString(1.2 * cm, 27 * cm, invoice.seller_name)
+        canvas.setFont('Helvetica', 9)
+        y = 26.6 * cm
+        for line in invoice.seller_address.split(','):
+             canvas.drawString(1.2 * cm, y, line.strip())
+             y -= 0.4 * cm
+        canvas.drawString(1.2 * cm, y, f"GSTIN/UIN: {invoice.seller_gstin}")
+        y -= 0.4 * cm
+        canvas.drawString(1.2 * cm, y, f"State Name: {invoice.seller_state}, Code: {invoice.seller_state_code}")
+
+        # ====================================================================
+        # CORRECTED SECTION: Invoice Details Box
+        # This now matches the template from your image exactly.
+        # ====================================================================
+        box_left, box_top, box_width, box_height = 10*cm, 27.7*cm, 10*cm, 4.8*cm
+        canvas.rect(box_left, box_top - box_height, box_width, box_height)
+        col_split = box_left + (box_width / 2)
+        row_height = 0.8 * cm
+        
+        # Draw the 6 horizontal lines for the rows
+        for i in range(1, 7):
+            canvas.line(box_left, box_top - i * row_height, box_left + box_width, box_top - i * row_height)
+        
+        # Draw the vertical dividing line
+        canvas.line(col_split, box_top, col_split, box_top - box_height)
+
+        # REVISED: Complete 6-row label data.
+        # We use placeholders "" for data not yet in your models.
+        # You can replace them later if you add these fields to your Invoice model.
+        labels = [
+            ("Invoice No.", invoice.invoice_number, "Dated", invoice.invoice_date.strftime('%d-%b-%Y')),
+            ("Delivery Note", "", "Mode/Terms of Payment", invoice.payment_mode or ""),
+            ("Reference No. & Date.", "", "Other References", ""),
+            ("Buyer's Order No.", "", "Dated", ""),
+            ("Dispatch Doc No.", "", "Delivery Note Date", ""),
+            ("Dispatched through", "", "Destination", "")
+        ]
+
+        canvas.setFont('Helvetica', 8)
+        text_padding_x = 4
+        text_padding_y = 10
+
+        # Loop to draw all the labels and their values
+        for i, (l1, v1, l2, v2) in enumerate(labels):
+            y_text = box_top - i * row_height - text_padding_y
+            canvas.drawString(box_left + text_padding_x, y_text, l1)
+            canvas.setFont('Helvetica-Bold', 9)
+            canvas.drawString(box_left + text_padding_x, y_text - 9, str(v1))
+            canvas.setFont('Helvetica', 8)
+            canvas.drawString(col_split + text_padding_x, y_text, l2)
+            canvas.setFont('Helvetica-Bold', 9)
+            canvas.drawString(col_split + text_padding_x, y_text - 9, str(v2))
+            # Reset font for the next loop iteration's label
+            canvas.setFont('Helvetica', 8)
+            
+        # NEW: Add the 'Terms of Delivery' label below the box
+        canvas.drawString(box_left + text_padding_x, (box_top - box_height - 0.4 * cm), "Terms of Delivery")
+        # ====================================================================
+        # END OF CORRECTED SECTION
+        # ====================================================================
+
+
+        # Consignee & Buyer Details (No changes here)
+        canvas.rect(1 * cm, 19.8 * cm, 9 * cm, 4.5 * cm, stroke=1, fill=0)
+        canvas.line(1 * cm, 22.05 * cm, 10 * cm, 22.05 * cm)
+        canvas.setFont('Helvetica', 9)
+        canvas.drawString(1.2 * cm, 24 * cm, "Consignee (Ship to)")
+        canvas.drawString(1.2 * cm, 21.7 * cm, "Buyer (Bill to)")
+        
+        # Consignee Details
+        canvas.setFont('Helvetica-Bold', 10)
+        canvas.drawString(1.2 * cm, 23.6 * cm, invoice.buyer_name)
+        canvas.setFont('Helvetica', 9)
+        canvas.drawString(1.2 * cm, 23.2 * cm, invoice.buyer_address)
+        canvas.drawString(1.2 * cm, 22.8 * cm, f"GSTIN/UIN: {invoice.buyer_gstin}")
+        canvas.drawString(1.2 * cm, 22.4 * cm, f"Place of Supply: {invoice.place_of_supply}")
+        # Buyer Details
+        canvas.setFont('Helvetica-Bold', 10)
+        canvas.drawString(1.2 * cm, 21.3 * cm, invoice.buyer_name)
+        canvas.setFont('Helvetica', 9)
+        canvas.drawString(1.2 * cm, 20.9 * cm, invoice.buyer_address)
+        canvas.drawString(1.2 * cm, 20.5 * cm, f"GSTIN/UIN: {invoice.buyer_gstin}")
+        canvas.drawString(1.2 * cm, 20.1 * cm, f"Place of Supply: {invoice.place_of_supply}")
+
+        # Declaration and Signature Box (No changes here)
+        page_width = A4[0]
+        footer_y = 1.5 * cm
+        left_x = 1.2 * cm
+        canvas.setFont('Helvetica-Bold', 10)
+        declaration_title = "Declaration"
+        canvas.drawString(left_x, footer_y + 1.6 * cm, declaration_title)
+        text_width = canvas.stringWidth(declaration_title, 'Helvetica-Bold', 10)
+        canvas.line(left_x, footer_y + 1.55 * cm, left_x + text_width, footer_y + 1.55 * cm)
+        declaration_text = ["We declare that this invoice shows the actual price of the", "goods described and that all particulars are true and", "correct."]
+        text_obj = canvas.beginText(left_x, footer_y + 1.2 * cm)
+        text_obj.setFont("Helvetica", 9)
+        text_obj.setLeading(12)
+        for line in declaration_text: text_obj.textLine(line)
+        canvas.drawText(text_obj)
+        right_box_width = 9.3 * cm
+        right_box_height = 2.2 * cm
+        right_x = page_width - right_box_width - 1 * cm
+        canvas.rect(right_x, footer_y, right_box_width, right_box_height)
+        canvas.setFont('Helvetica-Bold', 10)
+        canvas.drawRightString(right_x + right_box_width - 0.3 * cm, footer_y + 1.7 * cm, f"for {invoice.seller_name}")
+        canvas.setFont('Helvetica', 9)
+        canvas.drawRightString(right_x + right_box_width - 0.3 * cm, footer_y + 0.4 * cm, "Authorised Signatory")
+
+        # Final Centered Footer Text
+        canvas.setFont('Helvetica', 9)
+        canvas.drawCentredString(10.5 * cm, 1 * cm, "This is a Computer Generated Invoice")
+        
+        canvas.restoreState()
+
+    # --- Build Story ---
+    story = []
+    story.append(Spacer(1, 8.7 * cm))  # Space for header
+
+    # Main Items Table
+    item_chunks = [invoice_items[i:i + ITEMS_PER_PAGE] for i in range(0, len(invoice_items), ITEMS_PER_PAGE)]
+    main_header = [Paragraph(f"<b>{h}</b>", style_normal) for h in ["SI No.", "Description", "HSN", "Quantity", "Rate", "per", "Amount"]]
+    
+    for i, chunk in enumerate(item_chunks):
+        is_last_page = (i == len(item_chunks) - 1)
+        table_data = [main_header]
+        for idx, item in enumerate(chunk):
+            row = [
+                str(i * ITEMS_PER_PAGE + idx + 1),
+                item['desc'], item['hsn'],
+                Paragraph(f"{item['qty']}", style_right),
+                Paragraph(f"{item['rate']:.2f}", style_right),
+                "Nos", Paragraph(f"{item['amount']:.2f}", style_right)
+            ]
+            table_data.append(row)
+
+                # This is inside the `for i, chunk in enumerate(item_chunks):` loop
+        if is_last_page:
+            # --- START OF CORRECTION ---
+            
+            # Get the GST rate from the first item. Assumes rate is consistent.
+            # If items can have different rates, this logic would need to be more complex.
+            # But for this template, a single rate is expected.
+            gst_rate = invoice_items[0]['gst_rate'] if invoice_items else D(0)
+
+            table_data.append(['', Paragraph("<b>Sub Total</b>", style_right), '', '', '', '', Paragraph(f"<b>{invoice.subtotal:.2f}</b>", style_bold_right)])
+            
+            if invoice.igst_total > 0:
+                # Add IGST row with percentage
+                table_data.append([
+                    '', Paragraph(f"Output Tax IGST @ {gst_rate:.2f}%", style_right),
+                    '', '', 
+                    Paragraph(f"{gst_rate:.2f}%", style_right), '%',
+                    Paragraph(f"{invoice.igst_total:.2f}", style_right)
+                ])
+            else:
+                # Add CGST and SGST rows with percentages
+                cgst_rate = gst_rate / 2
+                sgst_rate = gst_rate / 2
+                table_data.append([
+                    '', Paragraph(f"Output Tax CGST @ {cgst_rate:.2f}%", style_right),
+                    '', '',
+                    Paragraph(f"{cgst_rate:.2f}%", style_right), '%',
+                    Paragraph(f"{invoice.cgst_total:.2f}", style_right)
+                ])
+                table_data.append([
+                    '', Paragraph(f"Output Tax SGST @ {sgst_rate:.2f}%", style_right),
+                    '', '',
+                    Paragraph(f"{sgst_rate:.2f}%", style_right), '%',
+                    Paragraph(f"{invoice.sgst_total:.2f}", style_right)
+                ])
+
+            if invoice.round_off != 0:
+                table_data.append(['', Paragraph("Round Off", style_right), '', '', '', '', Paragraph(f"{invoice.round_off:.2f}", style_right)])
+            
+            total_qty = sum(item['qty'] for item in invoice_items)
+            table_data.append(['', Paragraph("<b>TOTAL</b>", style_bold_right), '', Paragraph(f"<b>{total_qty} Nos</b>", style_bold_right), '', '', Paragraph(f"<b>₹ {invoice.grand_total:.2f}</b>", style_bold_right)])
+
+            # --- END OF CORRECTION ---
+        item_table = Table(table_data, colWidths=[1.5*cm, 6.8*cm, 2*cm, 2.3*cm, 2.1*cm, 1.3*cm, 3*cm])
+        item_table.setStyle(TableStyle([
+            ('GRID', (0, 0), (-1, -1), 1, colors.black), ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('ALIGN', (0, 1), (0, -1), 'CENTER'), ('ALIGN', (2, 1), (2, -1), 'CENTER'), ('ALIGN', (5, 1), (5, -1), 'CENTER'),
+        ]))
+        story.append(item_table)
+
+        if not is_last_page:
+            story.append(Spacer(1, 0.5 * cm))
+            story.append(Paragraph("continued ...", style_right))
+            story.append(PageBreak())
+            story.append(Spacer(1, 8.7 * cm))
+
+    # --- Final Summaries (on the last page) ---
+    story.append(Paragraph("E. & O.E", style_right))
+    story.append(Spacer(1, 0.5 * cm))
+    story.append(Paragraph(f"<b>Amount Chargeable (in words)</b><br/>{invoice.total_in_words}", style_normal))
+    story.append(Spacer(1, 0.5 * cm))
+
+    # --- Tax Summary Table ---
+    is_intra_state = invoice.igst_total == 0
+    tax_summary_data = []
+    
+    if is_intra_state:
+        header1 = [Paragraph(f"<b>{h}</b>", style_normal) for h in ["HSN", "Taxable Value", "Central Tax (CGST)", "", "State Tax (SGST)", "", "Total Tax"]]
+        header2 = ['', '', Paragraph("<b>Rate</b>", style_normal), Paragraph("<b>Amount</b>", style_normal), Paragraph("<b>Rate</b>", style_normal), Paragraph("<b>Amount</b>", style_normal), '']
+        tax_summary_data.extend([header1, header2])
+        col_widths = [3*cm, 3*cm, 2*cm, 2.5*cm, 2*cm, 2.5*cm, 4*cm]
+    else:
+        header1 = [Paragraph(f"<b>{h}</b>", style_normal) for h in ["HSN", "Taxable Value", "Integrated Tax (IGST)", "", "Total Tax"]]
+        header2 = ['', '', Paragraph("<b>Rate</b>", style_normal), Paragraph("<b>Amount</b>", style_normal), '']
+        tax_summary_data.extend([header1, header2])
+        col_widths = [4*cm, 4*cm, 3*cm, 4*cm, 4*cm]
+
+    total_taxable_value, total_cgst, total_sgst, total_igst = (D(0), D(0), D(0), D(0))
+    for hsn, data in hsn_summary.items():
+        taxable_value, gst_rate = data['taxable_value'], data['gst_rate']
+        total_taxable_value += taxable_value
+        row = [hsn, Paragraph(f"{taxable_value:.2f}", style_right)]
+        if is_intra_state:
+            cgst_amount = (taxable_value * (gst_rate / 2) / 100).quantize(D("0.01"))
+            total_cgst += cgst_amount
+            total_sgst += cgst_amount # SGST is same as CGST
+            row.extend([f"{gst_rate/2:.2f}%", Paragraph(f"{cgst_amount:.2f}", style_right), f"{gst_rate/2:.2f}%", Paragraph(f"{cgst_amount:.2f}", style_right), Paragraph(f"{cgst_amount * 2:.2f}", style_right)])
+        else:
+            igst_amount = (taxable_value * gst_rate / 100).quantize(D("0.01"))
+            total_igst += igst_amount
+            row.extend([f"{gst_rate:.2f}%", Paragraph(f"{igst_amount:.2f}", style_right), Paragraph(f"{igst_amount:.2f}", style_right)])
+        tax_summary_data.append(row)
+
+    total_row = [Paragraph("<b>Total</b>", style_left_bold), Paragraph(f"<b>{total_taxable_value:.2f}</b>", style_bold_right)]
+    total_tax = D(0)
+    if is_intra_state:
+        total_tax = total_cgst + total_sgst
+        total_row.extend(['', Paragraph(f"<b>{total_cgst:.2f}</b>", style_bold_right), '', Paragraph(f"<b>{total_sgst:.2f}</b>", style_bold_right), Paragraph(f"<b>{total_tax:.2f}</b>", style_bold_right)])
+    else:
+        total_tax = total_igst
+        total_row.extend(['', Paragraph(f"<b>{total_igst:.2f}</b>", style_bold_right), Paragraph(f"<b>{total_tax:.2f}</b>", style_bold_right)])
+    tax_summary_data.append(total_row)
+    
+    tax_summary_table = Table(tax_summary_data, colWidths=col_widths)
+    table_styles = [
+        ('GRID', (0, 0), (-1, -1), 1, colors.black), ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+    ]
+    if is_intra_state:
+        table_styles.extend([('SPAN', (0, 0), (0, 1)), ('SPAN', (1, 0), (1, 1)), ('SPAN', (2, 0), (3, 0)), ('SPAN', (4, 0), (5, 0)), ('SPAN', (6, 0), (6, 1)), ('SPAN', (0, -1), (1, -1))])
+    else:
+        table_styles.extend([('SPAN', (0, 0), (0, 1)), ('SPAN', (1, 0), (1, 1)), ('SPAN', (2, 0), (3, 0)), ('SPAN', (4, 0), (4, 1)), ('SPAN', (0, -1), (1, -1))])
+    tax_summary_table.setStyle(TableStyle(table_styles))
+    story.append(tax_summary_table)
+    story.append(Spacer(1, 0.5 * cm))
+
+    # Tax in Words
+    total_tax_integer = int(total_tax)
+    total_tax_paisa = int((total_tax - total_tax_integer) * 100)
+    tax_words = num2words(total_tax_integer, lang='en_IN').title()
+    if total_tax_paisa > 0:
+        tax_words += " and " + num2words(total_tax_paisa, lang='en_IN').title() + " Paisa"
+    tax_words += " Only"
+    story.append(Paragraph(f"Tax Amount (in words): <b>INR {tax_words}</b>", style_normal))
+
+    # --- Build the PDF document ---
+    doc.build(story, onFirstPage=draw_page_frame, onLaterPages=draw_page_frame)
+    
+    pdf_bytes = buffer.getvalue()
+    buffer.close()
+    return pdf_bytes
+
+
+# ==============================================================================
+#  STEP 2: New view to handle PDF generation request
+# ==============================================================================
+@login_required
+def generate_invoice_pdf_view(request, invoice_id):
+    """
+    Fetches an invoice and generates a PDF for it.
+    """
+    invoice = get_object_or_404(Invoice, pk=invoice_id)
+    
+    # Generate the PDF using the refactored function
+    pdf_bytes = generate_invoice_pdf(invoice)
+    
+    # Create an HTTP response with the PDF
+    response = HttpResponse(pdf_bytes, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="invoice_{invoice.invoice_number}.pdf"'
+    
+    return response
+
+    
 @login_required
 def invoice_view(request):
     if request.method == 'GET':
@@ -150,7 +522,7 @@ def invoice_view(request):
 
     return JsonResponse({'error': 'Method not allowed'}, status=405)
 
-
+# -----------------------
 
 @login_required
 def view_invoices(request):
@@ -201,3 +573,7 @@ def logout_api(request):
     request.user.auth_token.delete()  
     logout(request)
     return Response({'detail': 'Successfully logged out.'}, status=status.HTTP_200_OK)
+
+
+# ----------------------------------------------------------
+

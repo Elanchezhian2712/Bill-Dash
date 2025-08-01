@@ -15,6 +15,7 @@ urlpatterns = [
     # Pages (must be logged in)
     path('dashboard/', views.dashboard_view, name='dashboard'),
     path('invoice/', views.invoice_view, name='invoice'),
+    path('invoice/<int:invoice_id>/pdf/', views.generate_invoice_pdf_view, name='generate-invoice-pdf'),
     path('view/', views.view_invoices, name='view-invoices'),
     path('api/invoices/', views.get_invoices_api, name='api-get-invoices'),
 ]
