@@ -1,0 +1,63 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+venv/
+env/
+.venv/
+ENV/
+
+# Django stuff
+*.log
+*.pot
+*.pyc
+*.sqlite3
+db.sqlite3
+media/
+staticfiles/
+local_settings.py
+
+# Environment variables
+.env
+.env.*
+.venv.*
+
+# VSCode
+.vscode/
+
+# macOS
+.DS_Store
+
+# Linux
+*.swp
+
+# pycache leftovers
+**/__pycache__/
+
+# Coverage reports
+htmlcov/
+.coverage
+.tox/
+.nox/
+
+# pytest
+.pytest_cache/
+
+# MyPy
+.mypy_cache/
+
+# Pycharm
+.idea/
+
+# Node stuff (if mixing with JS frontend)
+node_modules/
+dist/
+build/
+
+# html2canvas or jsPDF outputs
+*.pdf
+
+# JetBrains
+*.iml

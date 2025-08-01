@@ -1,0 +1,474 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <!-- Required meta tags -->
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <title>Kavin Text | Generate Invoice</title>
+
+  <!-- Core CSS -->
+  <link rel="stylesheet" href="{% static 'assets/vendors/feather/feather.css' %}" />
+  <link rel="stylesheet" href="{% static 'assets/vendors/ti-icons/css/themify-icons.css' %}" />
+  <link rel="stylesheet" href="{% static 'assets/vendors/css/vendor.bundle.base.css' %}" />
+  <link rel="stylesheet" href="{% static 'assets/vendors/font-awesome/css/font-awesome.min.css' %}" />
+  <link rel="stylesheet" href="{% static 'assets/vendors/mdi/css/materialdesignicons.min.css' %}" />
+
+  <!-- CORRECTION: Added Bootstrap Datepicker CSS. This is required for the date picker to work. -->
+  <link rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/css/bootstrap-datepicker.min.css">
+
+  <!-- Main CSS -->
+  <link rel="stylesheet" href="{% static 'assets/css/style.css' %}" />
+  <link rel="shortcut icon" href="{% static 'assets/images/favicon.png' %}" />
+
+  <style>
+    .nav .nav-link.active {
+      background-color: #4B49AC !important;
+      color: #e0f0ff !important;
+      font-weight: 600 !important;
+      border-radius: 8px !important;
+    }
+
+    .nav .nav-link.active .menu-icon {
+      color: white !important;
+    }
+  </style>
+
+</head>
+
+<body>
+  <div class="container-scroller">
+    <!-- partial:partials/_navbar.html -->
+    <nav class="navbar col-lg-12 col-12 p-0 fixed-top d-flex flex-row">
+      <div class="text-center navbar-brand-wrapper d-flex align-items-center justify-content-start">
+        <a class="navbar-brand brand-logo me-5" href="{% url 'dashboard' %}">
+          <img src="{% static 'assets/images/logo.png' %}" class="me-2" alt="logo" />
+          <span class="fw-bold" style="color: #4b49ac">Kavin Text</span>
+        </a>
+        <a class="navbar-brand brand-logo-mini" href="{% url 'dashboard' %}">
+          <img src="{% static 'assets/images/logo.png' %}" alt="logo" />
+        </a>
+      </div>
+      <div class="navbar-menu-wrapper d-flex align-items-center justify-content-end">
+        <button class="navbar-toggler align-self-center" type="button" data-toggle="minimize">
+          <span class="icon-menu"></span>
+        </button>
+        <ul class="navbar-nav navbar-nav-right">
+          <li class="nav-item nav-profile dropdown">
+            <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown" id="profileDropdown">
+              <img src="{% static 'assets/images/profile.png' %}" alt="profile" />
+            </a>
+            <div class="dropdown-menu dropdown-menu-right navbar-dropdown" aria-labelledby="profileDropdown">
+              <!-- CORRECTION: Made logout a secure form submission -->
+              <form id="logout-form" action="{% url 'logout' %}" method="POST" style="display: none;">
+                {% csrf_token %}
+              </form>
+              <a class="dropdown-item" href="#"
+                onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
+                <i class="ti-power-off text-primary"></i> Logout
+              </a>
+            </div>
+          </li>
+        </ul>
+        <button class="navbar-toggler navbar-toggler-right d-lg-none align-self-center" type="button"
+          data-toggle="offcanvas">
+          <span class="icon-menu"></span>
+        </button>
+      </div>
+    </nav>
+
+    <!-- partial -->
+    <div class="container-fluid page-body-wrapper">
+      <!-- partial:partials/_sidebar.html -->
+<nav class="sidebar sidebar-offcanvas" id="sidebar">
+  <ul class="nav">
+    <li class="nav-item">
+      <a class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" href="{% url 'dashboard' %}">
+        <i class="icon-grid menu-icon"></i>
+        <span class="menu-title">Dashboard</span>
+      </a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link {% if request.resolver_match.url_name == 'invoice' %}active{% endif %}" href="{% url 'invoice' %}">
+        <i class="icon-paper menu-icon"></i>
+        <span class="menu-title">Generate Invoice</span>
+      </a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link {% if request.resolver_match.url_name == 'view-invoices' %}active{% endif %}" href="{% url 'view-invoices' %}">
+        <i class="ti-pencil-alt menu-icon"></i>
+        <span class="menu-title">View / Edit Invoices</span>
+      </a>
+    </li>
+  </ul>
+</nav>
+
+
+
+      <!-- partial -->
+      <div class="main-panel">
+        <div class="content-wrapper">
+          <div class="row">
+            <div class="col-md-12 grid-margin stretch-card">
+              <div class="card shadow p-3 mb-5 bg-white rounded">
+                <div class="card-body">
+                  <h4 class="card-title"
+                    style="text-align: center; color: #4B49AC; font-size: 28px; font-weight: bold; letter-spacing: 1px; margin: 20px 0;">
+                    Generate Invoice</h4>
+                  <hr style="margin: 30px 0;" />
+
+                  <!-- IMPROVEMENT: Added a specific URL for form submission -->
+                  <form class="forms-sample" id="invoice-form" action="{% url 'invoice' %}" method="POST">
+                    {% csrf_token %} <!-- Django requires this for security on POST forms -->
+
+                    <!-- Seller and Buyer Details -->
+                    <div class="row">
+                      <div class="col-md-6">
+                        <h5 class="card-title">Seller Details (Billed From)</h5>
+                        <div class="mb-3">
+                          <label for="sellerName" class="form-label">Seller Name</label>
+                          <input type="text" class="form-control" name="seller_name" id="sellerName" value="KAVIN TEX"
+                            readonly>
+                        </div>
+                        <div class="mb-3">
+                          <label for="sellerAddress" class="form-label">Address</label>
+                          <textarea class="form-control" name="seller_address" id="sellerAddress" rows="3"
+                            readonly>7-1/53, 22ND WARD, AMBETHKAR STREET, Tharamangalam</textarea>
+                        </div>
+                        <div class="mb-3">
+                          <label for="sellerGstin" class="form-label">GSTIN/UIN</label>
+                          <input type="text" class="form-control" name="seller_gstin" id="sellerGstin"
+                            value="33BUUPR3263F2Z9" readonly>
+                        </div>
+                        <div class="mb-3">
+                          <label for="sellerState" class="form-label">State Name, Code</label>
+                          <input type="text" class="form-control" name="seller_state" id="sellerState"
+                            value="Tamil Nadu" readonly>
+                          <input type="hidden" name="seller_state_code" id="sellerStateCode" value="33">
+                        </div>
+                      </div>
+                      <div class="col-md-6">
+                        <h5 class="card-title">Buyer Details (Bill To)</h5>
+                        <div class="mb-3">
+                          <label for="buyerName" class="form-label">Buyer Name</label>
+                          <input type="text" class="form-control" name="buyer_name" id="buyerName"
+                            placeholder="Enter Buyer Name" required>
+                        </div>
+                        <div class="mb-3">
+                          <label for="buyerAddress" class="form-label">Address (Ship to)</label>
+                          <textarea class="form-control" name="buyer_address" id="buyerAddress" rows="3"
+                            placeholder="Enter Shipping Address"></textarea>
+                        </div>
+                        <div class="mb-3">
+                          <label for="buyerGstin" class="form-label">GSTIN/UIN</label>
+                          <input type="text" class="form-control" name="buyer_gstin" id="buyerGstin"
+                              placeholder="Enter 15-digit Buyer GSTIN/UIN" maxlength="15">
+                        </div>
+                        <div class="mb-3">
+                          <label for="buyerStateCode" class="form-label">Place of Supply (State Code)</label>
+                          <input type="text" class="form-control" name="place_of_supply" id="buyerStateCode"
+                            placeholder="e.g., 27 for Maharashtra, 33 for Tamil Nadu" required>
+                          <div class="form-text text-muted small">
+                            Tax type (IGST or CGST/SGST) is set automatically based on this code.
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <hr>
+                    <!-- Invoice Metadata -->
+                    <div class="row">
+                      <div class="col-md-4">
+                        <div class="mb-3">
+                          <label for="invoiceNo" class="form-label">Invoice No.</label>
+                          <input type="text" class="form-control" name="invoice_number" id="invoiceNo"
+                            placeholder="e.g., INV/2025-001" required>
+                        </div>
+                      </div>
+                      <div class="col-md-4">
+                        <div class="mb-3">
+                          <label for="invoiceDate" class="form-label">Dated</label>
+                          <input type="text" class="form-control" name="invoice_date" id="invoiceDate"
+                            placeholder="dd-mm-yyyy" readonly>
+                        </div>
+                      </div>
+                      <div class="col-md-4">
+                        <div class="form-group">
+                          <label for="paymentMode">Mode/Terms of Payment</label>
+                          <input type="text" class="form-control" name="payment_mode" id="paymentMode"
+                            placeholder="e.g. Due on Receipt">
+                        </div>
+                      </div>
+                    </div>
+                    <!-- Items Table -->
+                    <div class="row">
+                      <div class="col-md-12">
+                        <h5 class="card-title">Item Details</h5>
+                        <table class="table table-bordered">
+                          <thead>
+                            <tr>
+                              <th style="width:5%">#</th>
+                              <th style="width:30%">Description / Bundles</th>
+                              <th style="width:12%">HSN/SAC</th>
+                              <th style="width:10%">Quantity</th>
+                              <th style="width:10%">Rate</th>
+                              <th style="width:8%">GST %</th>
+                              <th style="width:12%">Amount (₹)</th>
+                            </tr>
+                          </thead>
+                          <tbody id="item-table">
+                            <!-- Rows are added by JavaScript -->
+                          </tbody>
+                        </table>
+                        <button type="button" class="btn btn-primary btn-sm mt-2" id="add-item-btn">Add Item</button>
+                      </div>
+                    </div>
+                    <hr>
+                    <!-- Totals Section -->
+                    <div class="row justify-content-end">
+                      <div class="col-md-6">
+                        <h5 class="card-title text-end">Invoice Summary</h5>
+                        <div class="form-group row mb-2">
+                          <label class="col-sm-6 col-form-label">Subtotal</label>
+                          <div class="col-sm-6"><input type="text" name="subtotal" id="subtotal"
+                              class="form-control text-end" value="0.00" readonly></div>
+                        </div>
+                        <div id="cgst-sgst-rows">
+                          <div class="form-group row mb-2 tax-row">
+                            <label class="col-sm-6 col-form-label">CGST</label>
+                            <div class="col-sm-6"><input type="text" name="cgst_total" id="cgst"
+                                class="form-control text-end" value="0.00" readonly></div>
+                          </div>
+                          <div class="form-group row mb-2 tax-row">
+                            <label class="col-sm-6 col-form-label">SGST</label>
+                            <div class="col-sm-6"><input type="text" name="sgst_total" id="sgst"
+                                class="form-control text-end" value="0.00" readonly></div>
+                          </div>
+                        </div>
+                        <div class="form-group row mb-2 tax-row" id="igst-row">
+                          <label class="col-sm-6 col-form-label">IGST</label>
+                          <div class="col-sm-6"><input type="text" name="igst_total" id="igst"
+                              class="form-control text-end" value="0.00" readonly></div>
+                        </div>
+                        <div class="form-group row mb-2">
+                          <label class="col-sm-6 col-form-label">Round Off</label>
+                          <div class="col-sm-6"><input type="number" step="0.01" name="round_off" id="round-off"
+                              class="form-control text-end" value="0.00"></div>
+                        </div>
+                        <hr>
+                        <div class="form-group row mb-2">
+                          <label class="col-sm-6 col-form-label fw-bold"><strong>Total Amount</strong></label>
+                          <div class="col-sm-6"><input type="text" name="grand_total" id="grand-total"
+                              class="form-control text-end fw-bold" value="0.00" readonly></div>
+                        </div>
+                      </div>
+                    </div>
+                    <!-- Final Details -->
+                    <div class="form-group mt-3">
+                      <label for="amountInWords" class="form-label">Amount Chargeable (in words)</label>
+                      <input type="text" class="form-control" name="total_in_words" id="amountInWords" readonly>
+                    </div>
+                    <div class="d-flex justify-content-end mt-4">
+                      <button type="button" class="btn btn-light" onclick="window.location.reload()">Cancel</button>
+                      <button type="submit" class="btn btn-primary me-2">Generate Invoice</button>
+                    </div>
+                  </form>
+                  <!-- IMPROVEMENT: Added a div to show success/error messages from the server -->
+                  <div id="form-message" class="mt-3"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- JS -->
+  <script src="{% static 'assets/vendors/js/vendor.bundle.base.js' %}"></script>
+  <!-- CORRECTION: Added Bootstrap Datepicker JS. It must come AFTER jQuery (which is in vendor.bundle.base.js) -->
+  <script
+    src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/js/bootstrap-datepicker.min.js"></script>
+
+  <!-- Core JS -->
+  <script src="{% static 'assets/js/off-canvas.js' %}"></script>
+  <script src="{% static 'assets/js/template.js' %}"></script>
+  <script src="{% static 'assets/js/settings.js' %}"></script>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const itemTableBody = document.getElementById('item-table');
+      const addItemBtn = document.getElementById('add-item-btn');
+      const invoiceForm = document.getElementById('invoice-form');
+      const formMessageDiv = document.getElementById('form-message');
+
+      // Initialize Datepicker
+      $('#invoiceDate').datepicker({
+        format: "dd-mm-yyyy",
+        autoclose: true,
+        todayHighlight: true
+      }).datepicker('setDate', 'now');
+
+      // Add one item row to start and calculate totals
+      addItemRow();
+      updateTotals();
+
+      addItemBtn.addEventListener('click', addItemRow);
+
+      invoiceForm.addEventListener('input', function (e) {
+        if (e.target.closest('#item-table') || e.target.id === 'buyerStateCode' || e.target.id === 'round-off') {
+          updateTotals();
+        }
+      });
+
+      // IMPROVEMENT: Replaced alert() with a proper form submission using Fetch API
+      invoiceForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        formMessageDiv.innerHTML = ''; // Clear previous messages
+
+        const formData = new FormData(invoiceForm);
+        const data = {};
+
+        // Convert FormData to a plain object
+        formData.forEach((value, key) => {
+          if (data[key]) {
+            if (!Array.isArray(data[key])) {
+              data[key] = [data[key]];
+            }
+            data[key].push(value);
+          } else {
+            data[key] = value;
+          }
+        });
+
+        // Structure the items into a list of objects
+        const items = [];
+        const descriptions = Array.isArray(data.description) ? data.description : [data.description];
+        descriptions.forEach((desc, index) => {
+          items.push({
+            description: desc,
+            bundles: Array.isArray(data.bundles) ? data.bundles[index] : data.bundles,
+            hsn_code: Array.isArray(data.hsn_code) ? data.hsn_code[index] : data.hsn_code,
+            quantity: Array.isArray(data.quantity) ? data.quantity[index] : data.quantity,
+            rate: Array.isArray(data.rate) ? data.rate[index] : data.rate,
+            gst_rate: Array.isArray(data.gst_rate) ? data.gst_rate[index] : data.gst_rate,
+          });
+        });
+
+        // Final JSON payload for the API
+        const payload = { ...data, items: items };
+        // Remove individual item fields from the top level
+        delete payload.description;
+        delete payload.bundles;
+        delete payload.hsn_code;
+        delete payload.quantity;
+        delete payload.rate;
+        delete payload.gst_rate;
+
+        fetch(invoiceForm.action, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            'Authorization': 'Token ' + localStorage.getItem('authToken') // If your API is token protected
+          },
+          body: JSON.stringify(payload)
+        })
+          .then(response => response.json().then(data => ({ status: response.status, body: data })))
+          .then(({ status, body }) => {
+            if (status === 201) { // 201 Created is a good success status for POST
+              formMessageDiv.innerHTML = `<div class="alert alert-success">Invoice created successfully! Invoice ID: ${body.invoice_id}</div>`;
+              invoiceForm.reset();
+              addItemRow(); // Add one row back to the cleared form
+              updateTotals();
+            } else {
+              // Display errors from the server
+              const errorMessages = Object.values(body).flat().join('<br>');
+              formMessageDiv.innerHTML = `<div class="alert alert-danger">Error: ${errorMessages}</div>`;
+            }
+          })
+          .catch(error => {
+            console.error('Error:', error);
+            formMessageDiv.innerHTML = `<div class="alert alert-danger">An unexpected error occurred. Please try again.</div>`;
+          });
+      });
+
+      function addItemRow() {
+        const rowCount = itemTableBody.rows.length;
+        const newRow = itemTableBody.insertRow();
+        newRow.innerHTML = `
+          <td>${rowCount + 1}</td>
+          <td>
+            <input type="text" name="description" class="form-control description" placeholder="Item Name" required>
+            <input type="number" name="bundles" class="form-control bundles" placeholder="No. of Bundles" min="0" style="margin-top: 5px;">
+          </td>
+          <td><input type="text" name="hsn_code" class="form-control hsn" placeholder="HSN/SAC"></td>
+          <td><input type="number" name="quantity" class="form-control quantity" value="1" min="0" step="any"></td>
+          <td><input type="number" name="rate" class="form-control rate" value="0.00" step="0.01" min="0"></td>
+          <td><input type="number" name="gst_rate" class="form-control gst-rate" placeholder="e.g. 5" value="5" min="0"></td>
+          <td><input type="text" class="form-control amount" value="0.00" readonly></td>
+        `;
+      }
+
+      function updateTotals() {
+        const sellerStateCode = document.getElementById('sellerStateCode').value;
+        const buyerStateCode = document.getElementById('buyerStateCode').value.trim();
+        let subtotal = 0, totalCGST = 0, totalSGST = 0, totalIGST = 0;
+        const isIntraState = sellerStateCode === buyerStateCode && buyerStateCode !== '';
+
+        Array.from(itemTableBody.rows).forEach(row => {
+          const quantity = parseFloat(row.querySelector('.quantity').value) || 0;
+          const rate = parseFloat(row.querySelector('.rate').value) || 0;
+          const gstRate = parseFloat(row.querySelector('.gst-rate').value) || 0;
+          const amount = quantity * rate;
+          row.querySelector('.amount').value = amount.toFixed(2);
+          subtotal += amount;
+          const gstAmount = amount * (gstRate / 100);
+          if (isIntraState) {
+            totalCGST += gstAmount / 2;
+            totalSGST += gstAmount / 2;
+          } else { totalIGST += gstAmount; }
+        });
+
+        document.getElementById('subtotal').value = subtotal.toFixed(2);
+        const cgstSgstRows = document.getElementById('cgst-sgst-rows');
+        const igstRow = document.getElementById('igst-row');
+        if (isIntraState) {
+          cgstSgstRows.style.display = ''; igstRow.style.display = 'none';
+          document.getElementById('cgst').value = totalCGST.toFixed(2);
+          document.getElementById('sgst').value = totalSGST.toFixed(2);
+          document.getElementById('igst').value = '0.00';
+        } else {
+          cgstSgstRows.style.display = 'none'; igstRow.style.display = '';
+          document.getElementById('igst').value = totalIGST.toFixed(2);
+          document.getElementById('cgst').value = '0.00';
+          document.getElementById('sgst').value = '0.00';
+        }
+        const roundOff = parseFloat(document.getElementById('round-off').value) || 0;
+        const grandTotal = subtotal + totalCGST + totalSGST + totalIGST + roundOff;
+        document.getElementById('grand-total').value = grandTotal.toFixed(2);
+        document.getElementById('amountInWords').value = numberToWords(Math.round(grandTotal)) + ' Only';
+      }
+
+      function numberToWords(num) {
+        if (num === 0) return 'Zero';
+        const a = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+        const b = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+        const numStr = num.toString();
+        if (numStr.length > 9) return 'overflow';
+        const n = ('000000000' + numStr).substr(-9).match(/^(\d{2})(\d{2})(\d{2})(\d{1})(\d{2})$/);
+        if (!n) return '';
+        let str = '';
+        str += n[1] != 0 ? (a[Number(n[1])] || b[n[1][0]] + ' ' + a[n[1][1]]) + ' Crore ' : '';
+        str += n[2] != 0 ? (a[Number(n[2])] || b[n[2][0]] + ' ' + a[n[2][1]]) + ' Lakh ' : '';
+        str += n[3] != 0 ? (a[Number(n[3])] || b[n[3][0]] + ' ' + a[n[3][1]]) + ' Thousand ' : '';
+        str += n[4] != 0 ? (a[Number(n[4])] || b[n[4][0]] + ' ' + a[n[4][1]]) + ' Hundred ' : '';
+        str += n[5] != 0 ? ((str != '') ? 'and ' : '') + (a[Number(n[5])] || b[n[5][0]] + ' ' + a[n[5][1]]) : '';
+        return str.trim();
+      }
+    });
+  </script>
+</body>
+
+</html>

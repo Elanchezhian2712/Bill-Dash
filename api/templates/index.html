@@ -1,0 +1,135 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+  <title>Kavin Text | Login</title>
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="{% static 'assets/vendors/css/vendor.bundle.base.css' %}" />
+  <link rel="stylesheet" href="{% static 'assets/vendors/mdi/css/materialdesignicons.min.css' %}" />
+  <link rel="stylesheet" href="{% static 'assets/css/style.css' %}" />
+  <link rel="shortcut icon" href="{% static 'assets/images/favicon.png' %}" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
+
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(to right, #e0eafc, #cfdef3);
+    }
+
+    .auth-form-light {
+      background-color: #ffffff;
+      border-radius: 20px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+    }
+
+    .brand-logo {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .brand-logo img {
+      height: 40px;
+      margin-right: 10px;
+    }
+
+    .brand-logo span {
+      font-size: 22px;
+      font-weight: 600;
+      color: #4B49AC;
+    }
+
+    .form-control-lg {
+      border-radius: 30px;
+    }
+
+    .auth-form-btn {
+      border-radius: 12px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container-scroller">
+    <div class="container-fluid page-body-wrapper full-page-wrapper">
+      <div class="content-wrapper d-flex align-items-center auth px-0">
+        <div class="row w-100 mx-0 justify-content-center">
+          <div class="col-lg-4 col-md-6 col-sm-8 col-11">
+            <div class="auth-form-light text-left py-5 px-4 px-sm-5">
+              <div class="brand-logo">
+                <img src="{% static 'assets/images/logo.png' %}" alt="logo" />
+                <span>Kavin Text</span>
+              </div>
+              <h6 class="font-weight-light text-center mb-4">Sign in to continue</h6>
+
+              <form class="pt-3" id="login-form">
+                {% csrf_token %}
+                <div class="form-group">
+                  <input type="text" class="form-control form-control-lg" id="username" placeholder="Username" required>
+                </div>
+                <div class="form-group">
+                  <input type="password" class="form-control form-control-lg" id="password" placeholder="Password" required>
+                </div>
+                <div class="mt-3 d-grid">
+                  <button type="submit" class="btn btn-primary btn-lg btn-block auth-form-btn">
+                    SIGN IN
+                  </button>
+                </div>
+              </form>
+
+              <div id="error-message" class="text-center mt-3" style="color: red;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Login Script -->
+  <script>
+    const loginForm = document.getElementById('login-form');
+
+    loginForm.addEventListener('submit', function (event) {
+      event.preventDefault();
+
+      const errorMessageDiv = document.getElementById('error-message');
+      errorMessageDiv.textContent = '';
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+
+      const apiUrl = '/api/login/';
+
+      fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify({
+          username: username,
+          password: password
+        })
+      })
+        .then(response => {
+          if (!response.ok) {
+            return response.json().then(err => { throw new Error(err.error || 'Login failed') });
+          }
+          return response.json();
+        })
+        .then(data => {
+          console.log('Login successful!', data);
+          localStorage.setItem('authToken', data.token);
+          window.location.href = "{% url 'dashboard' %}";
+        })
+        .catch(error => {
+          console.error('Error:', error);
+          errorMessageDiv.textContent = error.message;
+        });
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,1 @@
+python manage.py makemigrations && python manage.py migrate && python manage.py makemigrations jumio_app && python manage.py migrate jumio_app
