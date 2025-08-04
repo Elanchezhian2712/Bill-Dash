@@ -299,94 +299,90 @@
         }
       });
       
-      // ======================= SINGLE, CORRECT SUBMIT HANDLER =======================
-      invoiceForm.addEventListener('submit', function (e) {
-        e.preventDefault();
-        formMessageDiv.innerHTML = '';
-        const submitButton = e.target.querySelector('button[type="submit"]');
-        submitButton.disabled = true;
-        submitButton.innerText = 'Saving...';
+     // ======================= REVISED, CLEANER SUBMIT HANDLER =======================
+invoiceForm.addEventListener('submit', function (e) {
+    e.preventDefault();
+    formMessageDiv.innerHTML = '';
+    const submitButton = e.target.querySelector('button[type="submit"]');
+    submitButton.disabled = true;
+    submitButton.innerText = 'Saving...';
 
-        // Build the payload object from the form data
-        const formData = new FormData(invoiceForm);
-        const data = {};
-        formData.forEach((value, key) => {
-            if (data[key]) {
-                if (!Array.isArray(data[key])) data[key] = [data[key]];
-                data[key].push(value);
-            } else {
-                data[key] = value;
-            }
-        });
-        const items = [];
-        const descriptions = Array.isArray(data.description) ? data.description : (data.description ? [data.description] : []);
-        descriptions.forEach((desc, index) => {
-            items.push({
-                description: desc,
-                hsn_code: Array.isArray(data.hsn_code) ? data.hsn_code[index] : data.hsn_code,
-                quantity: Array.isArray(data.quantity) ? data.quantity[index] : data.quantity,
-                rate: Array.isArray(data.rate) ? data.rate[index] : data.rate,
-                gst_rate: Array.isArray(data.gst_rate) ? data.gst_rate[index] : data.gst_rate,
-            });
-        });
-        const payload = { ...data, items: items };
-        delete payload.description;
-        delete payload.hsn_code;
-        delete payload.quantity;
-        delete payload.rate;
-        delete payload.gst_rate;
+    // Build the payload object from the form data
+    const formData = new FormData(invoiceForm);
+    
+    // A more modern way to convert FormData to a plain object
+    const data = Object.fromEntries(formData.entries());
 
+    // Normalize item fields into arrays, even if there's only one item
+    const descriptions = [].concat(data.description || []);
+    const hsn_codes = [].concat(data.hsn_code || []);
+    const quantities = [].concat(data.quantity || []);
+    const rates = [].concat(data.rate || []);
+    const gst_rates = [].concat(data.gst_rate || []);
+    
+    const items = descriptions.map((desc, index) => ({
+        description: desc,
+        hsn_code: hsn_codes[index] || '',
+        quantity: quantities[index] || 0,
+        rate: rates[index] || 0,
+        gst_rate: gst_rates[index] || 0,
+    }));
 
-        fetch(invoiceForm.action, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-            },
-            body: JSON.stringify(payload)
-        })
-        .then(response => response.json().then(data => ({ status: response.status, body: data })))
-        .then(({ status, body }) => {
-            if (status === 201) {
-                formMessageDiv.innerHTML = `<div class="alert alert-success">Invoice created successfully! Preparing PDF download...</div>`;
-                
-                // CONSTRUCT THE PDF URL
-                const pdfUrl = `/invoice/${body.invoice_id}/pdf/`;
-                
-                // TRIGGER THE DOWNLOAD by redirecting the browser to the PDF URL
-                setTimeout(() => {
-                    window.location.href = pdfUrl;
-                }, 1000);
-          
-                // RELOAD THE PAGE after a longer delay to get a new invoice number.
-                // This happens after the download has already started.
-               setTimeout(() => {
-                   fetch(pdfUrl, {
-                       method: 'GET',
-                       headers: {
-                           'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-                      }
-                  })
-              }, 3000);
+    // Create the final payload, excluding the raw item fields
+    const payload = { ...data, items };
+    delete payload.description;
+    delete payload.hsn_code;
+    delete payload.quantity;
+    delete payload.rate;
+    delete payload.gst_rate;
 
 
-            } else {
-                const errorMessages = (body && (body.message || body.error)) ? (body.message || body.error) : 'An unknown error occurred.';
-                formMessageDiv.innerHTML = `<div class="alert alert-danger">Error: ${errorMessages}</div>`;
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            formMessageDiv.innerHTML = `<div class="alert alert-danger">An unexpected network error occurred.</div>`;
-        }).finally(() => {
-            // Re-enable the button ONLY if there was an error.
-            // If successful, the page will reload anyway.
-            if (formMessageDiv.querySelector('.alert-danger')) {
-                submitButton.disabled = false;
-                submitButton.innerText = 'Generate Invoice';
-            }
-        });
-      });
+    fetch(invoiceForm.action, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify(payload)
+    })
+    .then(response => {
+        if (!response.ok) {
+            // Handle HTTP errors like 400, 500
+            return response.json().then(err => { throw err; });
+        }
+        return response.json(); // Success case
+    })
+    .then(body => {
+        // Success (status was 200-299)
+        formMessageDiv.innerHTML = `<div class="alert alert-success">Invoice created successfully! Preparing PDF download...</div>`;
+        
+        // Construct the PDF URL using the ID from the response body
+        const pdfUrl = `/invoice/${body.invoice_id}/pdf/`;
+        
+        // Trigger the download by redirecting the browser.
+        // The backend at `pdfUrl` MUST respond correctly with the PDF file.
+        setTimeout(() => {
+            window.location.href = pdfUrl;
+        }, 1000); // 1-second delay to allow the user to read the message
+
+        // Reload the page after a longer delay to get a fresh form.
+        // This will only happen if the user doesn't navigate away for the download.
+        setTimeout(() => {
+            window.location.reload();
+        }, 5000);
+
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        const errorMessages = (error && (error.message || error.detail || Object.values(error).join(' '))) ? 
+                              (error.message || error.detail || Object.values(error).join(' ')) : 'An unknown error occurred.';
+        formMessageDiv.innerHTML = `<div class="alert alert-danger">Error: ${errorMessages}</div>`;
+        
+        // Re-enable the button on failure
+        submitButton.disabled = false;
+        submitButton.innerText = 'Generate Invoice';
+    });
+});
       
       // ======================= ALL OTHER FUNCTIONS REMAIN THE SAME =======================
       function addItemRow() {
