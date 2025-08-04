@@ -114,7 +114,7 @@ def generate_invoice_pdf(invoice):
     )
 
     # --- Configuration and Data Preparation ---
-    ITEMS_PER_PAGE = 15  # Adjust as needed
+    ITEMS_PER_PAGE = 8  
     D = Decimal
 
     invoice_items = []
