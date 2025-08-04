@@ -1,5 +1,6 @@
 import json
 import traceback
+from django.forms import model_to_dict
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, render, redirect
 from django.contrib.auth import authenticate, login, logout, get_user_model
@@ -13,11 +14,25 @@ from django.db import transaction
 from .models import Invoice, InvoiceItem
 from datetime import datetime
 from django.utils.dateparse import parse_date
-from django.shortcuts import render 
 from datetime import date
-from django.db.models import Sum, Count
+from django.db.models import Sum
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
+# --- ReportLab Imports ---
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.enums import TA_CENTER, TA_RIGHT, TA_LEFT
+from reportlab.lib import colors
+from reportlab.lib.units import cm
+from reportlab.lib.pagesizes import A4
+from num2words import num2words
+from decimal import Decimal
+from io import BytesIO
+from django.http import JsonResponse, HttpResponse
+from django.core.serializers.json import DjangoJSONEncoder
+from django.forms.models import model_to_dict
+from django.utils.timezone import now
+
 
 User = get_user_model()
 
@@ -81,38 +96,16 @@ def dashboard_view(request):
     return render(request, 'pages/dashboard/dashboard.html', context)
 # -------------------------------
 
-# --- ReportLab Imports ---
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.enums import TA_CENTER, TA_RIGHT, TA_LEFT
-from reportlab.lib import colors
-from reportlab.lib.units import cm
-from reportlab.lib.pagesizes import A4
-from num2words import num2words
 
-import json
-import traceback
-from datetime import datetime
-from decimal import Decimal, ROUND_HALF_UP
-from io import BytesIO
-
-from django.contrib.auth.decorators import login_required
-from django.db import transaction
-from django.http import JsonResponse, HttpResponse
-from django.shortcuts import render, get_object_or_404
 
 
 # ==============================================================================
 #  STEP 1: Refactored PDF Generation Function
 # ==============================================================================
-# api/views.py
 
-# ... (all your other imports)
+
 def generate_invoice_pdf(invoice):
-    """
-    Generates a complete, multi-page PDF for a given Django Invoice object
-    and returns it as a byte string.
-    """
+
     buffer = BytesIO()
     doc = SimpleDocTemplate(
         buffer,
@@ -303,10 +296,7 @@ def generate_invoice_pdf(invoice):
             
             total_qty = sum(item['qty'] for item in invoice_items)
             
-            # =========================================================================
-            # THIS IS THE LINE THAT HAS BEEN MANUALLY CHANGED
-            # The '■' character has been replaced with the Rupee symbol '₹'
-            # =========================================================================
+  
             pdfmetrics.registerFont(TTFont('DejaVuSans', 'DejaVuSans.ttf'))
 
             custom_rupee_style = ParagraphStyle(
@@ -423,15 +413,11 @@ def generate_invoice_pdf(invoice):
 # ==============================================================================
 @login_required
 def generate_invoice_pdf_view(request, invoice_id):
-    """
-    Fetches an invoice and generates a PDF for it.
-    """
+ 
     invoice = get_object_or_404(Invoice, pk=invoice_id)
     
-    # Generate the PDF using the refactored function
     pdf_bytes = generate_invoice_pdf(invoice)
-    
-    # Create an HTTP response with the PDF
+
     response = HttpResponse(pdf_bytes, content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="invoice_{invoice.invoice_number}.pdf"'
     
@@ -441,7 +427,7 @@ def generate_invoice_pdf_view(request, invoice_id):
 @login_required
 def invoice_view(request):
     if request.method == 'GET':
-        # Get the latest invoice_number
+
         latest_invoice = Invoice.objects.order_by('-id').first()
         
         if latest_invoice and latest_invoice.invoice_number:
@@ -563,5 +549,79 @@ def logout_api(request):
     return Response({'detail': 'Successfully logged out.'}, status=status.HTTP_200_OK)
 
 
-# ----------------------------------------------------------
+# -----------------------Edit Invoice -----------------------------------
 
+
+@login_required
+def edit_invoice_view(request, invoice_id):
+    invoice = get_object_or_404(Invoice, pk=invoice_id)
+
+    if request.method == 'GET':
+        invoice_data = model_to_dict(invoice)
+        invoice_data['invoice_date'] = invoice.invoice_date.strftime('%d-%m-%Y')
+
+        items_data = [model_to_dict(item) for item in invoice.items.all()]
+        
+        context = {
+            'invoice': invoice,
+            'invoice_data_json': json.dumps(invoice_data, cls=DjangoJSONEncoder),
+            'items_data_json': json.dumps(items_data, cls=DjangoJSONEncoder),
+        }
+        return render(request, 'pages/invoice/edit_invoice.html', context)
+
+    elif request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            with transaction.atomic():
+                # --- Update main Invoice ---
+                invoice.invoice_date = datetime.strptime(data.get('invoice_date'), '%d-%m-%Y').date()
+                invoice.buyer_name = data.get('buyer_name')
+                invoice.buyer_address = data.get('buyer_address')
+                invoice.buyer_gstin = data.get('buyer_gstin', '')
+                invoice.place_of_supply = data.get('place_of_supply')
+                invoice.payment_mode = data.get('payment_mode')
+                invoice.total_bundles = data.get('total_bundles', 0)
+                invoice.subtotal = data.get('subtotal')
+                invoice.cgst_total = data.get('cgst_total', 0.00)
+                invoice.sgst_total = data.get('sgst_total', 0.00)
+                invoice.igst_total = data.get('igst_total', 0.00)
+                invoice.round_off = data.get('round_off', 0.00)
+                invoice.grand_total = data.get('grand_total')
+                invoice.total_in_words = data.get('total_in_words')
+
+                # Optional override: manually update updated_on
+                invoice.updated_on = now()
+
+                invoice.save()
+
+                # --- Sync Invoice Items ---
+                frontend_item_ids = {item['id'] for item in data.get('items', []) if 'id' in item}
+                invoice.items.exclude(id__in=frontend_item_ids).delete()
+
+                for item_data in data.get('items', []):
+                    item_id = item_data.get('id')
+                    if item_id:
+                        InvoiceItem.objects.filter(id=item_id, invoice=invoice).update(
+                            description=item_data.get('description'),
+                            hsn_code=item_data.get('hsn_code'),
+                            quantity=item_data.get('quantity'),
+                            rate=item_data.get('rate'),
+                            gst_rate=item_data.get('gst_rate')
+                        )
+                    else:
+                        InvoiceItem.objects.create(
+                            invoice=invoice,
+                            description=item_data.get('description'),
+                            hsn_code=item_data.get('hsn_code'),
+                            quantity=item_data.get('quantity'),
+                            rate=item_data.get('rate'),
+                            gst_rate=item_data.get('gst_rate')
+                        )
+
+            return JsonResponse({'message': 'Invoice updated successfully!', 'invoice_id': invoice.id}, status=200)
+
+        except Exception as e:
+            traceback.print_exc()
+            return JsonResponse({'error': f'An unexpected error occurred: {str(e)}'}, status=500)
+
+    return JsonResponse({'error': 'Method not allowed'}, status=405)

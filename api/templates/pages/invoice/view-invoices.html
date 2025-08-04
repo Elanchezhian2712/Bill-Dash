@@ -142,7 +142,7 @@
                           <th>Buyer Name</th>
                           <th>Date</th>
                           <th>Amount</th>
-                          <!-- <th>Actions</th> -->
+                          <th>Actions</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -173,13 +173,15 @@
 
  <script>
     $(document).ready(function () {
+      // Initialize date picker
       flatpickr(".datepicker", {
         dateFormat: "Y-m-d",
       });
 
+      // Initialize DataTable
       const invoiceTable = $('#invoiceTable').DataTable({
         "processing": true,
-        "serverSide": false,
+        "serverSide": false, // False is correct if you load all data at once
         "ajax": {
             "url": "{% url 'api-get-invoices' %}",
             "dataSrc": "invoices"
@@ -195,17 +197,46 @@
           { "data": "invoice_number" },
           { "data": "buyer_name" },
           { "data": "invoice_date" },
-          { "data": "grand_total" }
-          // REMOVED the entire block for the "Actions" column
+          { 
+            "data": "grand_total",
+            "className": "text-end" // Optional: right-aligns the amount
+          },
+
+          // ================================================================
+          // THIS IS THE NEW "ACTIONS" COLUMN DEFINITION
+          // ================================================================
+          {
+            "data": null, // We don't need data from a specific column for this
+            "orderable": false,
+            "className": "text-center", // Optional: centers the buttons
+            "render": function (data, type, row, meta) {
+              // 'row' is the full data object for the current row (e.g., row.id)
+              
+
+              const pdfUrl = `{% url 'generate-invoice-pdf' 0 %}`.replace('0', row.id);
+              
+              // URL for the Edit page
+              const editUrl = `{% url 'edit-invoice' 0 %}`.replace('0', row.id);
+              
+              // Return the HTML for the buttons
+              return `
+                <a href="${pdfUrl}" class="btn btn-info btn-sm" target="_blank" title="View PDF">
+                  <i class="fa fa-file-pdf-o"></i>
+                </a>
+                <a href="${editUrl}" class="btn btn-warning btn-sm" title="Edit Invoice">
+                  <i class="fa fa-pencil"></i>
+                </a>
+              `;
+            }
+          }
         ]
       });
 
+      // Filter form submission logic (no changes needed here)
       $('#dateFilterForm').on('submit', function (e) {
         e.preventDefault();
-
         const fromDate = $('#fromDate').val();
         const toDate = $('#toDate').val();
-
         if (fromDate && toDate) {
           const newApiUrl = `{% url 'api-get-invoices' %}?from_date=${fromDate}&to_date=${toDate}`;
           invoiceTable.ajax.url(newApiUrl).load();
