@@ -360,9 +360,26 @@
 
                 // RELOAD THE PAGE after a longer delay to get a new invoice number.
                 // This happens after the download has already started.
-                setTimeout(() => {
-                    window.location.reload(); 
-                }, 3000);
+               setTimeout(() => {
+                  fetch(pdfUrl, {
+                      method: 'GET',
+                      headers: {
+                          'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                      }
+                  })
+                  .then(response => response.blob())
+                  .then(blob => {
+                      const url = window.URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `invoice_${body.invoice_id}.pdf`; // customize filename if needed
+                      document.body.appendChild(a); // required for Firefox
+                      a.click();
+                      a.remove();
+                      window.URL.revokeObjectURL(url);
+                  });
+              }, 3000);
+
 
             } else {
                 const errorMessages = (body && (body.message || body.error)) ? (body.message || body.error) : 'An unknown error occurred.';
@@ -393,7 +410,7 @@
           </td>
           <td><input type="text" name="hsn_code" class="form-control hsn" placeholder="HSN/SAC"></td>
           <td><input type="number" name="quantity" class="form-control quantity" value="1" min="0" step="any"></td>
-          <td><input type="number" name="rate" class="form-control rate" value="0.00" step="0.01" min="0"></td>
+          <td><input type="number" name="rate" class="form-control rate" value="0" step="0.01" min="0"></td>
           <td><input type="number" name="gst_rate" class="form-control gst-rate" placeholder="e.g. 5" value="5" min="0"></td>
           <td><input type="text" class="form-control amount" value="0.00" readonly></td>
         `;
