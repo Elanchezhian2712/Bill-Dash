@@ -411,7 +411,7 @@
           const gstRate = parseFloat(row.querySelector('.gst-rate').value) || 0;
           
           const amount = quantity * rate;
-          row.querySelector('.amount').value = amount.toFixed(2);
+          row.querySelector('.amount').value = Math.round(amount);
           subtotal += amount;
 
           const gstAmount = amount * (gstRate / 100);
@@ -423,7 +423,8 @@
           }
         });
         
-        document.getElementById('subtotal').value = subtotal.toFixed(2);
+        document.getElementById('subtotal').value = Math.round(subtotal);
+
         
         const cgstSgstRows = document.getElementById('cgst-sgst-rows');
         const igstRow = document.getElementById('igst-row');
@@ -431,20 +432,22 @@
         if (isIntraState) {
           cgstSgstRows.style.display = ''; 
           igstRow.style.display = 'none';
-          document.getElementById('cgst').value = totalCGST.toFixed(2);
-          document.getElementById('sgst').value = totalSGST.toFixed(2);
+          document.getElementById('cgst').value = Math.round(totalCGST);
+          document.getElementById('sgst').value = Math.round(totalSGST);
           document.getElementById('igst').value = '0.00';
         } else {
           cgstSgstRows.style.display = 'none'; 
           igstRow.style.display = '';
-          document.getElementById('igst').value = totalIGST.toFixed(2);
+          document.getElementById('igst').value = Math.round(totalIGST);
           document.getElementById('cgst').value = '0.00';
           document.getElementById('sgst').value = '0.00';
         }
 
-        const roundOff = parseFloat(document.getElementById('round-off').value) || 0;
+        const roundOff = Math.round(parseFloat(document.getElementById('round-off').value) || 0);
+        // const roundOff = parseFloat(document.getElementById('round-off').value) || 0;
         const grandTotal = subtotal + totalCGST + totalSGST + totalIGST + roundOff;
-        document.getElementById('grand-total').value = grandTotal.toFixed(2);
+        // document.getElementById('grand-total').value = grandTotal.toFixed(2);
+        document.getElementById('grand-total').value = Math.round(grandTotal);
         document.getElementById('amountInWords').value = numberToWords(Math.round(grandTotal));
       }
 
