@@ -357,28 +357,31 @@
                 setTimeout(() => {
                     window.location.href = pdfUrl;
                 }, 1000);
+                setTimeout(() => {
+                    window.location.reload(); 
+                }, 3000);
 
                 // RELOAD THE PAGE after a longer delay to get a new invoice number.
                 // This happens after the download has already started.
-               setTimeout(() => {
-                  fetch(pdfUrl, {
-                      method: 'GET',
-                      headers: {
-                          'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-                      }
-                  })
-                  .then(response => response.blob())
-                  .then(blob => {
-                      const url = window.URL.createObjectURL(blob);
-                      const a = document.createElement('a');
-                      a.href = url;
-                      a.download = `invoice_${body.invoice_id}.pdf`; // customize filename if needed
-                      document.body.appendChild(a); // required for Firefox
-                      a.click();
-                      a.remove();
-                      window.URL.revokeObjectURL(url);
-                  });
-              }, 3000);
+               // setTimeout(() => {
+               //     fetch(pdfUrl, {
+               //         method: 'GET',
+               //         headers: {
+               //             'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+              //         }
+              //     })
+              //     .then(response => response.blob())
+              //     .then(blob => {
+              //         const url = window.URL.createObjectURL(blob);
+              //         const a = document.createElement('a');
+              //         a.href = url;
+              //         a.download = `invoice_${body.invoice_id}.pdf`; // customize filename if needed
+              //         document.body.appendChild(a); // required for Firefox
+              //         a.click();
+              //         a.remove();
+              //         window.URL.revokeObjectURL(url);
+              //     });
+              // }, 3000);
 
 
             } else {
