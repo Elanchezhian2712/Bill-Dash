@@ -473,6 +473,11 @@ def invoice_view(request):
                 invoice_date_str = data.get('invoice_date')
                 invoice_date_obj = datetime.strptime(invoice_date_str, '%d-%m-%Y').date()
 
+                # --- Compute grand_total and round_off BEFORE creating the invoice ---
+                raw_grand_total = float(data.get('grand_total', 0.0))
+                rounded_grand_total = round(raw_grand_total)
+                round_off = round(rounded_grand_total - raw_grand_total, 2)
+
                 invoice = Invoice.objects.create(
                     invoice_number=data.get('invoice_number'),
                     invoice_date=invoice_date_obj,
@@ -491,11 +496,12 @@ def invoice_view(request):
                     cgst_total=data.get('cgst_total', 0.00),
                     sgst_total=data.get('sgst_total', 0.00),
                     igst_total=data.get('igst_total', 0.00),
-                    round_off=data.get('round_off', 0.00),
-                    grand_total=data.get('grand_total'),
+                    round_off=round_off,
+                    grand_total=rounded_grand_total,
                     total_in_words=data.get('total_in_words'),
                     created_by=request.user
                 )
+
 
                 items_data = data.get('items', [])
                 for item_data in items_data:
@@ -605,8 +611,13 @@ def edit_invoice_view(request, invoice_id):
                 invoice.cgst_total = data.get('cgst_total', 0.00)
                 invoice.sgst_total = data.get('sgst_total', 0.00)
                 invoice.igst_total = data.get('igst_total', 0.00)
-                invoice.round_off = data.get('round_off', 0.00)
-                invoice.grand_total = data.get('grand_total')
+                # --- NEW ROUNDING LOGIC ---
+                raw_grand_total = float(data.get('grand_total', 0.0))
+                rounded_grand_total = round(raw_grand_total)
+                round_off = round(rounded_grand_total - raw_grand_total, 2)
+
+                invoice.round_off = round_off
+                invoice.grand_total = rounded_grand_total
                 invoice.total_in_words = data.get('total_in_words')
 
                 # Optional override: manually update updated_on
