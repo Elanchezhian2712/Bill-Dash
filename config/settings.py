@@ -19,13 +19,13 @@ DEBUG = os.getenv('DEBUG', 'True') == 'True'
 ALLOWED_HOSTS = ['*']
 
 # Custom user model
-AUTH_USER_MODEL = 'api.User'
+AUTH_USER_MODEL = 'core.User'
 
 
 # Application definition
 INSTALLED_APPS = [
     'rest_framework',
-    'api',
+    'core',
     'rest_framework.authtoken',
     'django.contrib.admin',
     'django.contrib.auth',

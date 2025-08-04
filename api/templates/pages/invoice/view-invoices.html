@@ -183,7 +183,7 @@
         "processing": true,
         "serverSide": false, // False is correct if you load all data at once
         "ajax": {
-            "url": "{% url 'api-get-invoices' %}",
+            "url": "{% url 'core-get-invoices' %}",
             "dataSrc": "invoices"
         },
         "columns": [
@@ -238,7 +238,7 @@
         const fromDate = $('#fromDate').val();
         const toDate = $('#toDate').val();
         if (fromDate && toDate) {
-          const newApiUrl = `{% url 'api-get-invoices' %}?from_date=${fromDate}&to_date=${toDate}`;
+          const newApiUrl = `{% url 'core-get-invoices' %}?from_date=${fromDate}&to_date=${toDate}`;
           invoiceTable.ajax.url(newApiUrl).load();
         } else {
             alert('Please select both a "From" and "To" date to filter.');
