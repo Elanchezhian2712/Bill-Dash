@@ -307,12 +307,14 @@ def generate_invoice_pdf(invoice):
             # THIS IS THE LINE THAT HAS BEEN MANUALLY CHANGED
             # The '■' character has been replaced with the Rupee symbol '₹'
             # =========================================================================
-            pdfmetrics.registerFont(TTFont('ArialUnicode', 'Arial Unicode MS.ttf'))
+            pdfmetrics.registerFont(TTFont('DejaVuSans', 'DejaVuSans.ttf'))
 
-            c.setFont('ArialUnicode', 12)
-
-            # The Unicode character for the Rupee symbol is '\u20B9'
-            c.drawString(100, 750, "Price: \u20B9 1234.56")
+            custom_rupee_style = ParagraphStyle(
+                name='rupee_style',
+                parent=style_bold_right,
+                fontName='DejaVuSans',
+            )
+            # Paragraph(f"<b>\u20B9 {invoice.grand_total:.2f}</b>", custom_rupee_style)
 
             table_data.append([
                 '', 
@@ -321,8 +323,9 @@ def generate_invoice_pdf(invoice):
                 Paragraph(f"<b>{total_qty} Nos</b>", style_bold_right), 
                 '', 
                 '', 
-                Paragraph(f"<b> Rs. {invoice.grand_total:.2f}</b>", style_bold_right)
+                Paragraph(f"<b>\u20B9 {invoice.grand_total:.2f}</b>", custom_rupee_style)
             ])
+
             # =========================================================================
 
         item_table = Table(table_data, colWidths=[1.5*cm, 6.8*cm, 2*cm, 2.3*cm, 2.1*cm, 1.3*cm, 3*cm])
