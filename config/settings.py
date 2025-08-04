@@ -120,8 +120,13 @@ REST_FRAMEWORK = {
 
 
 # Static files
+# Near the bottom of config/settings.py
+
 STATIC_URL = 'static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+# ADD THIS LINE:
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Default auto field
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
