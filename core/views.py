@@ -102,6 +102,9 @@ def dashboard_view(request):
 # ==============================================================================
 #  STEP 1: Refactored PDF Generation Function
 # ==============================================================================
+import os
+from django.conf import settings
+
 
 
 def generate_invoice_pdf(invoice):
@@ -297,7 +300,24 @@ def generate_invoice_pdf(invoice):
             total_qty = sum(item['qty'] for item in invoice_items)
             
   
-            pdfmetrics.registerFont(TTFont('DejaVuSans', 'DejaVuSans.ttf'))
+            # pdfmetrics.registerFont(TTFont('DejaVuSans', 'DejaVuSans.ttf'))
+            # Use the actual location based on your structure
+            font_path = os.path.join(
+                settings.BASE_DIR,
+                'core',
+                'static',
+                'assets',
+                'fonts',
+                'DejaVuSans',
+                'DejaVuSans.ttf'
+            )
+
+            # Optional: Check file exists before registering
+            if not os.path.exists(font_path):
+                raise FileNotFoundError(f"Font file not found at: {font_path}")
+
+            # Register the font
+            pdfmetrics.registerFont(TTFont('DejaVuSans', font_path))
 
             custom_rupee_style = ParagraphStyle(
                 name='rupee_style',
