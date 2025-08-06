@@ -67,30 +67,74 @@ def login_api(request):
 
 
 # ------------------------- Protected Views -------------------------
+from datetime import date, timedelta
 @login_required
 def dashboard_view(request):
-    # Get the current date to determine the current month
     today = date.today()
-    first_day_of_month = today.replace(day=1)
+    start_of_week = today - timedelta(days=today.weekday())
+    start_of_month = today.replace(day=1)
+
+
+    if today.month >= 4:
+        start_of_financial_year = date(today.year, 4, 1)
+        end_of_financial_year = date(today.year + 1, 3, 31)
+    else:
+        start_of_financial_year = date(today.year - 1, 4, 1)
+        end_of_financial_year = date(today.year, 3, 31)
+
+    # --- Base QuerySets for each period ---
+    daily_invoices = Invoice.objects.filter(invoice_date=today)
+    weekly_invoices = Invoice.objects.filter(invoice_date__gte=start_of_week)
+    monthly_invoices = Invoice.objects.filter(invoice_date__gte=start_of_month)
+    yearly_invoices = Invoice.objects.filter(
+        invoice_date__range=[start_of_financial_year, end_of_financial_year]
+    )
+
+    # --- Calculations for Counts ---
+    daily_invoice_count = daily_invoices.count()
+    weekly_invoice_count = weekly_invoices.count()
+    monthly_invoice_count = monthly_invoices.count()
+    yearly_invoice_count = yearly_invoices.count()
+
+    # --- Calculations for Amounts ---
+    # The 'or 0' handles cases where there are no invoices, preventing None
+    daily_amount_total = daily_invoices.aggregate(total=Sum('grand_total'))['total'] or 0
+    weekly_amount_total = weekly_invoices.aggregate(total=Sum('grand_total'))['total'] or 0
+    monthly_amount_total = monthly_invoices.aggregate(total=Sum('grand_total'))['total'] or 0
+    yearly_amount_total = yearly_invoices.aggregate(total=Sum('grand_total'))['total'] or 0
+
+    # --- Original calculations for summary cards (can be kept or simplified) ---
     total_invoice_count = Invoice.objects.count()
     total_invoiced_amount_agg = Invoice.objects.aggregate(total=Sum('grand_total'))
     total_invoiced_amount = total_invoiced_amount_agg['total'] or 0
-    invoices_this_month = Invoice.objects.filter(invoice_date__gte=first_day_of_month)
-    invoices_this_month_count = invoices_this_month.count()
-    amount_this_month_agg = invoices_this_month.aggregate(total=Sum('grand_total'))
-    amount_this_month = amount_this_month_agg['total'] or 0
     total_clients_count = Invoice.objects.values('buyer_name').distinct().count()
-    buyers_this_month = set(invoices_this_month.values_list('buyer_name', flat=True).distinct())
-    buyers_before_this_month = set(Invoice.objects.filter(invoice_date__lt=first_day_of_month).values_list('buyer_name', flat=True).distinct())
+
+    # New clients this month
+    buyers_this_month = set(monthly_invoices.values_list('buyer_name', flat=True).distinct())
+    buyers_before_this_month = set(Invoice.objects.filter(invoice_date__lt=start_of_month).values_list('buyer_name', flat=True).distinct())
     new_clients_count = len(buyers_this_month - buyers_before_this_month)
 
+
     context = {
+        # Original Stats for top cards
         'total_invoice_count': total_invoice_count,
         'total_invoiced_amount': total_invoiced_amount,
-        'invoices_this_month_count': invoices_this_month_count,
-        'amount_this_month': amount_this_month,
+        'invoices_this_month_count': monthly_invoice_count,
+        'amount_this_month': monthly_amount_total,
         'total_clients_count': total_clients_count,
-        'new_clients_count': new_clients_count
+        'new_clients_count': new_clients_count,
+
+        # New Detailed Stats for the table
+        'daily_invoice_count': daily_invoice_count,
+        'weekly_invoice_count': weekly_invoice_count,
+        'yearly_invoice_count': yearly_invoice_count,
+
+        'daily_amount_total': daily_amount_total,
+        'weekly_amount_total': weekly_amount_total,
+        'yearly_amount_total': yearly_amount_total,
+
+        'start_of_financial_year': start_of_financial_year,
+        'end_of_financial_year': end_of_financial_year,
     }
 
     return render(request, 'pages/dashboard/dashboard.html', context)
@@ -104,7 +148,6 @@ def dashboard_view(request):
 # ==============================================================================
 import os
 from django.conf import settings
-
 
 
 def generate_invoice_pdf(invoice):
@@ -199,24 +242,67 @@ def generate_invoice_pdf(invoice):
             canvas.setFont('Helvetica', 8)
         canvas.drawString(box_left + text_padding_x, (box_top - box_height - 0.4 * cm), "Terms of Delivery")
 
-        # Consignee & Buyer Details
-        canvas.rect(1 * cm, 19.8 * cm, 9 * cm, 4.5 * cm, stroke=1, fill=0)
-        canvas.line(1 * cm, 22.05 * cm, 10 * cm, 22.05 * cm)
+        # --- CORRECTED Consignee, Buyer & Transport Details ---
+        # Main container box for the three sections
+       
+        # Main container box for the three sections
+        box_left, box_bottom, box_width, box_height = 1 * cm, 19.8 * cm, 9 * cm, 4.5 * cm
+        canvas.rect(box_left, box_bottom, box_width, box_height, stroke=1, fill=0)
+
+        # Define section boundaries for three equal sections
+        section_height = box_height / 3
+        top_divider_y = box_bottom + 2 * section_height
+        bottom_divider_y = box_bottom + 1 * section_height
+
+        # Draw two horizontal divider lines to create three distinct sections
+        canvas.line(box_left, top_divider_y, box_left + box_width, top_divider_y)
+        canvas.line(box_left, bottom_divider_y, box_left + box_width, bottom_divider_y)
+
+        # --- Drawing parameters for better layout control ---
+        text_x = 1.2 * cm
+        line_spacing = 0.32 * cm  # Reduced spacing to fit 4 lines per section
+        top_padding = 0.33 * cm    # Padding from the top of each section
+
+        # --- Section 1: Consignee (Ship to) ---
+        y = top_divider_y + section_height - top_padding # Start from top of section
         canvas.setFont('Helvetica', 9)
-        canvas.drawString(1.2 * cm, 24 * cm, "Consignee (Ship to)")
-        canvas.drawString(1.2 * cm, 21.7 * cm, "Buyer (Bill to)")
+        canvas.drawString(text_x, y, "Consignee (Ship to)")
+        y -= line_spacing
         canvas.setFont('Helvetica-Bold', 10)
-        canvas.drawString(1.2 * cm, 23.6 * cm, invoice.buyer_name)
+        canvas.drawString(text_x, y, getattr(invoice, 'buyer_name', ''))
+        y -= line_spacing
         canvas.setFont('Helvetica', 9)
-        canvas.drawString(1.2 * cm, 23.2 * cm, invoice.buyer_address)
-        canvas.drawString(1.2 * cm, 22.8 * cm, f"GSTIN/UIN: {invoice.buyer_gstin}")
-        canvas.drawString(1.2 * cm, 22.4 * cm, f"Place of Supply: {invoice.place_of_supply}")
+        canvas.drawString(text_x, y, getattr(invoice, 'buyer_address', ''))
+        y -= line_spacing
+        canvas.drawString(text_x, y, f"GSTIN/UIN: {getattr(invoice, 'buyer_gstin', '')}")
+
+        # --- Section 2: Buyer (Bill to) ---
+        y = bottom_divider_y + section_height - top_padding # Start from top of middle section
+        canvas.setFont('Helvetica', 9)
+        canvas.drawString(text_x, y, "Buyer (Bill to)")
+        y -= line_spacing
         canvas.setFont('Helvetica-Bold', 10)
-        canvas.drawString(1.2 * cm, 21.3 * cm, invoice.buyer_name)
+        canvas.drawString(text_x, y, getattr(invoice, 'buyer_name', ''))
+        y -= line_spacing
         canvas.setFont('Helvetica', 9)
-        canvas.drawString(1.2 * cm, 20.9 * cm, invoice.buyer_address)
-        canvas.drawString(1.2 * cm, 20.5 * cm, f"GSTIN/UIN: {invoice.buyer_gstin}")
-        canvas.drawString(1.2 * cm, 20.1 * cm, f"Place of Supply: {invoice.place_of_supply}")
+        canvas.drawString(text_x, y, getattr(invoice, 'buyer_address', ''))
+        y -= line_spacing
+        canvas.drawString(text_x, y, f"Place of Supply: {getattr(invoice, 'place_of_supply', '')}")
+
+        # --- Section 3: Transport Details ---
+        y = box_bottom + section_height - top_padding # Start from top of bottom section
+        canvas.setFont('Helvetica', 9)
+        canvas.drawString(text_x, y, "Transport Details")
+        y -= line_spacing
+        canvas.setFont('Helvetica-Bold', 10)
+        canvas.drawString(text_x, y, getattr(invoice, 'transport_name', ''))
+        y -= line_spacing
+        canvas.setFont('Helvetica', 9)
+        canvas.drawString(text_x, y, f"GSTIN/UIN: {getattr(invoice, 'transport_gstin', '')}")
+        y -= line_spacing
+        canvas.drawString(text_x, y, f"Address: {getattr(invoice, 'transport_address', '')}") # Restored this line
+# --- END OF CORRECTION ---
+        # --- END OF CORRECTION ---
 
         # Declaration and Signature Box
         page_width = A4[0]
@@ -427,7 +513,6 @@ def generate_invoice_pdf(invoice):
     buffer.close()
     return pdf_bytes
 
-
 # ==============================================================================
 #  STEP 2: New view to handle PDF generation request
 # ==============================================================================
@@ -497,6 +582,9 @@ def invoice_view(request):
                     sgst_total=data.get('sgst_total', 0.00),
                     igst_total=data.get('igst_total', 0.00),
                     round_off=round_off,
+                    transport_name=data.get('transport_name'),
+                    transport_address=data.get('transport_address'),
+                    transport_gstin=data.get('transport_gstin'),
                     grand_total=rounded_grand_total,
                     total_in_words=data.get('total_in_words'),
                     created_by=request.user
@@ -620,14 +708,20 @@ def edit_invoice_view(request, invoice_id):
                 invoice.grand_total = rounded_grand_total
                 invoice.total_in_words = data.get('total_in_words')
 
-                # Optional override: manually update updated_on
-                invoice.updated_on = now()
-
-                invoice.save()
+               
+                # --- Update Transport Details ---
+                invoice.transport_name = data.get('transport_name', '')
+                invoice.transport_address = data.get('transport_address', '')
+                invoice.transport_gstin = data.get('transport_gstin', '')
 
                 # --- Sync Invoice Items ---
                 frontend_item_ids = {item['id'] for item in data.get('items', []) if 'id' in item}
                 invoice.items.exclude(id__in=frontend_item_ids).delete()
+
+                 # Optional override: manually update updated_on
+                invoice.updated_on = now()
+
+                invoice.save()
 
                 for item_data in data.get('items', []):
                     item_id = item_data.get('id')

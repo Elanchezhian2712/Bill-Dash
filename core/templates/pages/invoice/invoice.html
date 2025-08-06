@@ -166,6 +166,21 @@
                       </div>
                     </div>
                     <hr>
+                    <div class="row mb-3">
+                      <div class="col-md-4">
+                        <label for="transportName" class="form-label">Transport Name</label>
+                        <input type="text" class="form-control" name="transport_name" id="transportName" placeholder="Enter transport name" required>
+                      </div>
+                      <div class="col-md-4">
+                        <label for="transportAddress" class="form-label">Transport Address</label>
+                        <input type="text" class="form-control" name="transport_address" id="transportAddress" placeholder="Enter transport address" required>
+                      </div>
+                      <div class="col-md-4">
+                        <label for="transportGstin" class="form-label">Transport GSTIN/UIN</label>
+                        <input type="text" class="form-control" name="transport_gstin" id="transportGstin" placeholder="Enter 15-digit GSTIN/UIN" maxlength="15">
+                      </div>
+                    </div>
+                    <hr>
                     <!-- Invoice Metadata -->
                     <div class="row mb-3">
                       <div class="col-md-4">
@@ -329,12 +344,20 @@ invoiceForm.addEventListener('submit', function (e) {
     }));
 
     // Create the final payload, excluding the raw item fields
-    const payload = { ...data, items };
+   const payload = {
+      ...data,
+      items,
+      transport_name: document.getElementById('transportName').value,
+      transport_address: document.getElementById('transportAddress').value,
+      transport_gstin: document.getElementById('transportGstin').value
+    };
+
     delete payload.description;
     delete payload.hsn_code;
     delete payload.quantity;
     delete payload.rate;
     delete payload.gst_rate;
+
 
 
     fetch(invoiceForm.action, {
