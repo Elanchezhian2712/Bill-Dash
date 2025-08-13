@@ -27,9 +27,6 @@ class User(AbstractUser):
     def __str__(self):
         return self.username
 
-
-
-
 class InvoiceItem(models.Model):
     invoice = models.ForeignKey('Invoice', on_delete=models.CASCADE, related_name='items')
     description = models.CharField(max_length=255)

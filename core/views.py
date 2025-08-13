@@ -305,21 +305,48 @@ def generate_invoice_pdf(invoice):
         # --- END OF CORRECTION ---
 
         # Declaration and Signature Box
+                # --- Footer Section: Declaration, Bank Details & Signature ---
+                # --- Footer Section: Declaration, Bank Details & Signature ---
         page_width = A4[0]
-        footer_y = 1.5 * cm
+        footer_y = 1.5 * cm  # The bottom Y coordinate for the boxes
         left_x = 1.2 * cm
+
+        # Declaration (Positioned above the footer boxes)
         canvas.setFont('Helvetica-Bold', 10)
         declaration_title = "Declaration"
-        canvas.drawString(left_x, footer_y + 1.6 * cm, declaration_title)
+        # MOVED UP: Increased vertical position from 3.0cm to 3.5cm
+        canvas.drawString(left_x, footer_y + 3.5 * cm, declaration_title)
         text_width = canvas.stringWidth(declaration_title, 'Helvetica-Bold', 10)
-        canvas.line(left_x, footer_y + 1.55 * cm, left_x + text_width, footer_y + 1.55 * cm)
-        declaration_text = ["We declare that this invoice shows the actual price of the", "goods described and that all particulars are true and", "correct."]
-        text_obj = canvas.beginText(left_x, footer_y + 1.2 * cm)
+        # MOVED UP: Increased vertical position for the underline
+        canvas.line(left_x, footer_y + 3.45 * cm, left_x + text_width, footer_y + 3.45 * cm)
+        
+        declaration_text = ["We declare that this invoice shows the actual price of the", "goods described and that all particulars are true and correct."]
+        # MOVED UP: Increased vertical start position from 2.6cm to 3.1cm
+        text_obj = canvas.beginText(left_x, footer_y + 3.1 * cm)
         text_obj.setFont("Helvetica", 9)
         text_obj.setLeading(12)
         for line in declaration_text: text_obj.textLine(line)
         canvas.drawText(text_obj)
-        right_box_width = 9.3 * cm
+
+        # Bank Details Box
+        bank_box_x = 1 * cm
+        bank_box_y = footer_y
+        bank_box_width = 9.5 * cm
+        bank_box_height = 2.2 * cm
+        canvas.rect(bank_box_x, bank_box_y, bank_box_width, bank_box_height)
+
+        # Bank details text
+        canvas.setFont('Helvetica', 9)
+        y_pos = bank_box_y + bank_box_height - 0.6 * cm 
+        text_x_pos = bank_box_x + 0.3 * cm
+        canvas.drawString(text_x_pos, y_pos, "Bank A/c. No. 292700050900034")
+        y_pos -= 0.5 * cm 
+        canvas.drawString(text_x_pos, y_pos, "Name of the Bank : TMBL")
+        y_pos -= 0.5 * cm
+        canvas.drawString(text_x_pos, y_pos, "IFSC Code : TMBL0000292")
+
+        # Signature Box (on the right side)
+        right_box_width = 9.5 * cm
         right_box_height = 2.2 * cm
         right_x = page_width - right_box_width - 1 * cm
         canvas.rect(right_x, footer_y, right_box_width, right_box_height)
@@ -616,27 +643,42 @@ def invoice_view(request):
 def view_invoices(request):
     return render(request, 'pages/invoice/view-invoices.html')
 
+# your views.py
 
 @login_required
 def get_invoices_api(request):
-
+    """
+    API endpoint to get invoices.
+    Can be filtered by from_date, to_date, or both.
+    """
     from_date_str = request.GET.get('from_date')
     to_date_str = request.GET.get('to_date')
 
-    invoices = Invoice.objects.all().order_by('-invoice_date')
+    # Start with the base queryset
+    invoices = Invoice.objects.all().order_by('-invoice_date', '-invoice_number')
 
-    if from_date_str and to_date_str:
+    # MODIFIED: Apply filters independently instead of requiring both
+    if from_date_str:
         try:
             from_date = parse_date(from_date_str)
+            if from_date:
+                # Filter for invoices on or after the from_date
+                invoices = invoices.filter(invoice_date__gte=from_date)
+        except (ValueError, TypeError):
+            # Ignore invalid date format
+            pass
+
+    if to_date_str:
+        try:
             to_date = parse_date(to_date_str)
-            if from_date and to_date:
-                invoices = invoices.filter(invoice_date__range=(from_date, to_date))
-            else:
-                print("⚠️ One or both dates couldn't be parsed.")
-        except ValueError as e:
-            print(f"❌ Error parsing dates: {e}")
-
-
+            if to_date:
+                # Filter for invoices on or before the to_date
+                invoices = invoices.filter(invoice_date__lte=to_date)
+        except (ValueError, TypeError):
+            # Ignore invalid date format
+            pass
+            
+    # Serialize the final filtered data
     data = [{
         'id': invoice.id,
         'invoice_number': invoice.invoice_number,
@@ -646,7 +688,6 @@ def get_invoices_api(request):
     } for invoice in invoices]
               
     return JsonResponse({'invoices': data})
-
 
 # ------------------------- Logout: For Template User (HTML redirect) -------------------------
 def logout_view(request):
@@ -750,3 +791,18 @@ def edit_invoice_view(request, invoice_id):
             return JsonResponse({'error': f'An unexpected error occurred: {str(e)}'}, status=500)
 
     return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+
+# -------------------delete invoice -------------------
+@login_required
+def delete_invoice_view(request, invoice_id):
+    """
+    Deletes an invoice.
+    """
+    try:
+        invoice = get_object_or_404(Invoice, pk=invoice_id)
+        invoice.delete()
+        return JsonResponse({'message': 'Invoice deleted successfully!'}, status=200)
+
+    except Exception as e:
+        return JsonResponse({'error': f'An error occurred: {str(e)}'}, status=500)

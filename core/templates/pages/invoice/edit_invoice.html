@@ -5,7 +5,7 @@
   <!-- Required meta tags -->
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-  <title>Kavin Text | Edit Invoice</title>
+  <title>Kavin Text | Manage Invoice</title>
 
   <!-- Core CSS -->
   <link rel="stylesheet" href="{% static 'assets/vendors/feather/feather.css' %}" />
@@ -24,7 +24,7 @@
 </head>
 <body>
 <div class="container-scroller">
-  <!-- Your Navbar -->
+  <!-- Navbar -->
   <nav class="navbar col-lg-12 col-12 p-0 fixed-top d-flex flex-row">
       <div class="text-center navbar-brand-wrapper d-flex align-items-center justify-content-start">
         <a class="navbar-brand brand-logo me-5" href="{% url 'dashboard' %}">
@@ -65,7 +65,7 @@
       </div>
     </nav>
   <div class="container-fluid page-body-wrapper">
-    <!-- Your Sidebar -->
+    <!-- Sidebar -->
     <nav class="sidebar sidebar-offcanvas" id="sidebar">
           <ul class="nav">
             <li class="nav-item">
@@ -81,9 +81,9 @@
               </a>
             </li>
             <li class="nav-item">
-              <a class="nav-link {% if request.resolver_match.url_name == 'view-invoices' %}active{% endif %}" href="{% url 'view-invoices' %}">
+              <a class="nav-link {% if request.resolver_match.url_name == 'view-invoices' or request.resolver_match.url_name == 'edit-invoice' %}active{% endif %}" href="{% url 'view-invoices' %}">
                 <i class="ti-pencil-alt menu-icon"></i>
-                <span class="menu-title">View / Edit Invoices</span>
+                <span class="menu-title">Manage Invoices</span>
               </a>
             </li>
           </ul>
@@ -101,9 +101,10 @@
                 <hr/>
                 <form class="forms-sample" id="invoice-form" action="{% url 'edit-invoice' invoice.id %}" method="POST">
                   {% csrf_token %}
-                  <!-- Seller and Buyer Details -->
+                  <input type="hidden" id="sellerStateCode" value="33">
+
+                  <!-- Buyer Details -->
                   <div class="row">
-                    
                     <div class="col-md-12">
                       <h5 class="card-title">Buyer Details (Bill To)</h5>
                       <div class="mb-3">
@@ -163,14 +164,13 @@
                         <table class="table table-bordered">
                           <thead>
                             <tr>
-                              <th style="width:5%">#</th>
-                              <th style="width:30%">Description</th>
-                              <th style="width:12%">HSN/SAC</th>
-                              <th style="width:10%">Quantity</th>
-                              <th style="width:10%">Rate</th>
-                              <th style="width:8%">GST %</th>
-                              <th style="width:12%">Amount (₹)</th>
-                              <th style="width:5%">Action</th>
+                              <th style="width:2%">#</th>
+                                <th style="width:28%">Description</th>
+                                <th style="width:12%">HSN/SAC</th>
+                                <th style="width:12%">Quantity</th>
+                                <th style="width:12%">Rate</th>
+                                <th style="width:20%">Amount (₹)</th>
+                                <th style="width:5%">Action</th>
                             </tr>
                           </thead>
                           <tbody id="item-table"></tbody>
@@ -205,10 +205,9 @@
                         <label class="col-sm-6 col-form-label">IGST</label>
                         <div class="col-sm-6"><input type="text" name="igst_total" id="igst" class="form-control text-end" readonly></div>
                       </div>
-                      <div class="form-group row mb-2">
-                        <label class="col-sm-6 col-form-label">Round Off</label>
-                        <div class="col-sm-6"><input type="number" step="0.01" name="round_off" id="round-off" class="form-control text-end"></div>
-                      </div>
+                      
+                      <!-- REMOVED: Round-off row was here -->
+
                       <hr>
                       <div class="form-group row mb-2">
                         <label class="col-sm-6 col-form-label fw-bold"><strong>Total Amount</strong></label>
@@ -221,8 +220,8 @@
                     <input type="text" class="form-control" name="total_in_words" id="amountInWords" readonly>
                   </div>
                   <div class="d-flex justify-content-end mt-4">
-                    <a href="{% url 'view-invoices' %}" class="btn btn-light">Cancel</a>
-                    <button type="submit" class="btn btn-primary me-2">Update Invoice</button>
+                    <a href="{% url 'view-invoices' %}" class="btn btn-light me-2">Cancel</a>
+                    <button type="submit" class="btn btn-primary">Update Invoice</button>
                   </div>
                 </form>
                 <div id="form-message" class="mt-3"></div>
@@ -235,7 +234,7 @@
   </div>
 </div>
 
-<!-- All your required JS libraries -->
+<!-- JS -->
 <script src="{% static 'assets/vendors/js/vendor.bundle.base.js' %}"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/js/bootstrap-datepicker.min.js"></script>
 <script src="{% static 'assets/js/off-canvas.js' %}"></script>
@@ -244,17 +243,14 @@
 <!-- Custom Edit Invoice Script -->
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    // --- Parse data passed from the Django view ---
     const invoiceData = JSON.parse('{{ invoice_data_json|escapejs }}');
     const itemsData = JSON.parse('{{ items_data_json|escapejs }}');
     
-    // --- Get DOM elements ---
     const itemTableBody = document.getElementById('item-table');
     const addItemBtn = document.getElementById('add-item-btn');
     const invoiceForm = document.getElementById('invoice-form');
     const formMessageDiv = document.getElementById('form-message');
 
-    // --- Main function to populate the form on page load ---
     function populateForm() {
         $('#invoiceDate').datepicker({
             format: "dd-mm-yyyy",
@@ -274,64 +270,44 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('transportGstin').value = invoiceData.transport_gstin;
 
         itemsData.forEach(item => addItemRow(item));
-        updateRowNumbers();
-
-        // Directly set totals from saved data to ensure accuracy on load
-        document.getElementById('subtotal').value = parseFloat(invoiceData.subtotal).toFixed(2);
-        document.getElementById('cgst').value = parseFloat(invoiceData.cgst_total).toFixed(2);
-        document.getElementById('sgst').value = parseFloat(invoiceData.sgst_total).toFixed(2);
-        document.getElementById('igst').value = parseFloat(invoiceData.igst_total).toFixed(2);
-        document.getElementById('round-off').value = parseFloat(invoiceData.round_off).toFixed(2);
-        document.getElementById('grand-total').value = parseFloat(invoiceData.grand_total).toFixed(2);
-        document.getElementById('amountInWords').value = invoiceData.total_in_words;
-
-        // Final call to correctly show/hide tax rows
-        updateTotals(); 
+        
+        // No need to set totals manually here, updateTotals() will do it correctly
+        
+        updateTotals(); // Call this once to populate all calculated fields
     }
 
-    // --- Function to add a new item row (for existing or new items) ---
     function addItemRow(item = null) {
         const rowCount = itemTableBody.rows.length;
         const newRow = itemTableBody.insertRow();
         newRow.innerHTML = `
-            <td>${rowCount + 1}</td>
-            <td><input type="text" name="description" class="form-control description" required></td>
-            <td><input type="text" name="hsn_code" class="form-control hsn"></td>
-            <td><input type="number" name="quantity" class="form-control quantity" value="1" min="0" step="any"></td>
-            <td><input type="number" name="rate" class="form-control rate" value="0.00" step="0.01" min="0"></td>
-            <td><input type="number" name="gst_rate" class="form-control gst-rate" value="5" min="0"></td>
-            <td><input type="text" class="form-control amount" readonly></td>
-            <td>
-                ${item ? `<input type="hidden" name="id" value="${item.id}">` : ''}
-                <button type="button" class="btn btn-danger btn-sm delete-item-btn">×</button>
-            </td>
+          <td class="row-index">${rowCount + 1}</td>
+          <td><input type="text" name="description" class="form-control description" placeholder="Item Name" required></td>
+          <td><input type="text" name="hsn_code" class="form-control hsn" placeholder="HSN/SAC"></td>
+          <td><input type="number" name="quantity" class="form-control quantity" value="1" min="0" step="any"></td>
+          <td><input type="number" name="rate" class="form-control rate" value="0" step="0.01" min="0"></td>
+          <td>
+            <input type="text" class="form-control amount" value="0.00" readonly>
+            <input type="hidden" name="gst_rate" class="form-control gst-rate" value="5">
+          </td>
+          <td><button type="button" class="btn btn-danger btn-sm delete-item-btn"><i class="fa fa-times"></i></button></td>
         `;
 
         if (item) {
-            const quantityInput = newRow.querySelector('.quantity');
-            const rateInput = newRow.querySelector('.rate');
-            const amountInput = newRow.querySelector('.amount');
-
             newRow.querySelector('.description').value = item.description;
             newRow.querySelector('.hsn').value = item.hsn_code;
-            quantityInput.value = parseFloat(item.quantity);
-            rateInput.value = parseFloat(item.rate);
+            newRow.querySelector('.quantity').value = parseFloat(item.quantity);
+            newRow.querySelector('.rate').value = parseFloat(item.rate);
             newRow.querySelector('.gst-rate').value = parseFloat(item.gst_rate);
-
-            const quantity = parseFloat(quantityInput.value) || 0;
-            const rate = parseFloat(rateInput.value) || 0;
-            amountInput.value = (quantity * rate).toFixed(2);
         }
+        updateRowNumbers();
     }
     
-    // --- Function to re-number the rows after a deletion ---
     function updateRowNumbers() {
         Array.from(itemTableBody.rows).forEach((row, index) => {
             row.cells[0].textContent = index + 1;
         });
     }
 
-    // --- Function to recalculate all totals ---
     function updateTotals() {
         const sellerStateCode = document.getElementById('sellerStateCode').value;
         const buyerStateCode = document.getElementById('buyerStateCode').value.trim();
@@ -344,8 +320,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const gstRate = parseFloat(row.querySelector('.gst-rate').value) || 0;
             
             const amount = quantity * rate;
-            row.querySelector('.amount').value = amount.toFixed(2);
-            
+            row.querySelector('.amount').value = Math.round(amount);
             subtotal += amount;
 
             const gstAmount = amount * (gstRate / 100);
@@ -357,7 +332,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
         
-        document.getElementById('subtotal').value = subtotal.toFixed(2);
+        document.getElementById('subtotal').value = Math.round(subtotal);
         
         const cgstSgstRows = document.getElementById('cgst-sgst-rows');
         const igstRow = document.getElementById('igst-row');
@@ -365,24 +340,23 @@ document.addEventListener('DOMContentLoaded', function () {
         if (isIntraState) {
             cgstSgstRows.style.display = ''; 
             igstRow.style.display = 'none';
-            document.getElementById('cgst').value = totalCGST.toFixed(2);
-            document.getElementById('sgst').value = totalSGST.toFixed(2);
-            document.getElementById('igst').value = '0.00';
+            document.getElementById('cgst').value = Math.round(totalCGST);
+            document.getElementById('sgst').value = Math.round(totalSGST);
+            document.getElementById('igst').value = '0';
         } else {
             cgstSgstRows.style.display = 'none'; 
             igstRow.style.display = '';
-            document.getElementById('igst').value = totalIGST.toFixed(2);
-            document.getElementById('cgst').value = '0.00';
-            document.getElementById('sgst').value = '0.00';
+            document.getElementById('igst').value = Math.round(totalIGST);
+            document.getElementById('cgst').value = '0';
+            document.getElementById('sgst').value = '0';
         }
 
-        const roundOff = parseFloat(document.getElementById('round-off').value) || 0;
-        const grandTotal = subtotal + totalCGST + totalSGST + totalIGST + roundOff;
-        document.getElementById('grand-total').value = grandTotal.toFixed(2);
+        // REMOVED: round-off logic is gone
+        const grandTotal = subtotal + totalCGST + totalSGST + totalIGST;
+        document.getElementById('grand-total').value = Math.round(grandTotal);
         document.getElementById('amountInWords').value = numberToWords(Math.round(grandTotal));
     }
 
-    // --- Function to convert number to words ---
     function numberToWords(num) {
         if (num === 0) return 'Zero Only';
         const a = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
@@ -402,20 +376,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // --- Event Listeners ---
     itemTableBody.addEventListener('click', function(e) {
-        if (e.target.classList.contains('delete-item-btn')) {
+        if (e.target.closest('.delete-item-btn')) {
             e.target.closest('tr').remove();
             updateRowNumbers();
             updateTotals();
         }
     });
 
-    addItemBtn.addEventListener('click', () => {
-        addItemRow();
-        updateRowNumbers();
-    });
+    addItemBtn.addEventListener('click', addItemRow);
 
     invoiceForm.addEventListener('input', function(e) {
-        if (e.target.closest('#item-table') || e.target.id === 'buyerStateCode' || e.target.id === 'round-off') {
+        if (e.target.closest('#item-table') || e.target.id === 'buyerStateCode') {
             updateTotals();
         }
     });
@@ -428,14 +399,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const items = [];
         Array.from(itemTableBody.rows).forEach(row => {
-            items.push({
-                id: row.querySelector('[name=id]') ? row.querySelector('[name=id]').value : null,
-                description: row.querySelector('[name=description]').value,
-                hsn_code: row.querySelector('[name=hsn_code]').value,
-                quantity: row.querySelector('[name=quantity]').value,
-                rate: row.querySelector('[name=rate]').value,
-                gst_rate: row.querySelector('[name=gst_rate]').value,
-            });
+            const description = row.querySelector('[name=description]').value;
+            if (description) {
+                items.push({
+                    description: description,
+                    hsn_code: row.querySelector('[name=hsn_code]').value,
+                    quantity: row.querySelector('[name=quantity]').value,
+                    rate: row.querySelector('[name=rate]').value,
+                    gst_rate: row.querySelector('[name=gst_rate]').value,
+                });
+            }
         });
 
         const payload = {
@@ -453,7 +426,7 @@ document.addEventListener('DOMContentLoaded', function () {
             transport_name: document.getElementById('transportName').value,
             transport_address: document.getElementById('transportAddress').value,
             transport_gstin: document.getElementById('transportGstin').value,
-            round_off: document.getElementById('round-off').value,
+            // REMOVED: 'round_off' key from the payload
             grand_total: document.getElementById('grand-total').value,
             total_in_words: document.getElementById('amountInWords').value,
             items: items,
@@ -473,7 +446,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 formMessageDiv.innerHTML = `<div class="alert alert-success">${body.message}</div>`;
                 setTimeout(() => window.location.href = "{% url 'view-invoices' %}", 1500);
             } else {
-                formMessageDiv.innerHTML = `<div class="alert alert-danger">${body.error}</div>`;
+                formMessageDiv.innerHTML = `<div class="alert alert-danger">${body.error || 'An error occurred.'}</div>`;
                 submitButton.disabled = false;
                 submitButton.innerText = 'Update Invoice';
             }
@@ -486,6 +459,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
+    // Initialize the form with data
     populateForm(); 
 });
 </script>
