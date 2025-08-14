@@ -186,7 +186,7 @@ def generate_invoice_pdf(invoice):
     style_bold_right = ParagraphStyle(name='bold_right', parent=style_normal, alignment=TA_RIGHT, fontName='Helvetica-Bold')
     style_left_bold = ParagraphStyle(name='left_bold', parent=style_normal, fontName='Helvetica-Bold')
 
-    # --- Page Frame Drawer (Header/Footer) ---
+     # --- Page Frame Drawer (Header/Footer) ---
     def draw_page_frame(canvas, doc):
         canvas.saveState()
         page_num_str = f" (Page {canvas.getPageNumber()})" if doc.page > 1 else ""
@@ -301,52 +301,51 @@ def generate_invoice_pdf(invoice):
         canvas.drawString(text_x, y, f"GSTIN/UIN: {getattr(invoice, 'transport_gstin', '')}")
         y -= line_spacing
         canvas.drawString(text_x, y, f"Address: {getattr(invoice, 'transport_address', '')}") # Restored this line
-# --- END OF CORRECTION ---
-        # --- END OF CORRECTION ---
+        # --- END OF CORRECTION --
 
         # Declaration and Signature Box
-                # --- Footer Section: Declaration, Bank Details & Signature ---
-                # --- Footer Section: Declaration, Bank Details & Signature ---
+
         page_width = A4[0]
-        footer_y = 1.5 * cm  # The bottom Y coordinate for the boxes
+        footer_y = 1.5 * cm
         left_x = 1.2 * cm
 
-        # Declaration (Positioned above the footer boxes)
         canvas.setFont('Helvetica-Bold', 10)
         declaration_title = "Declaration"
-        # MOVED UP: Increased vertical position from 3.0cm to 3.5cm
-        canvas.drawString(left_x, footer_y + 3.5 * cm, declaration_title)
+        canvas.drawString(left_x, footer_y + 3 * cm, declaration_title)
         text_width = canvas.stringWidth(declaration_title, 'Helvetica-Bold', 10)
-        # MOVED UP: Increased vertical position for the underline
-        canvas.line(left_x, footer_y + 3.45 * cm, left_x + text_width, footer_y + 3.45 * cm)
-        
-        declaration_text = ["We declare that this invoice shows the actual price of the", "goods described and that all particulars are true and correct."]
-        # MOVED UP: Increased vertical start position from 2.6cm to 3.1cm
-        text_obj = canvas.beginText(left_x, footer_y + 3.1 * cm)
+        canvas.line(left_x, footer_y + 2.9 * cm, left_x + text_width, footer_y + 2.9 * cm)
+        declaration_text = ["We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct."]
+        text_obj = canvas.beginText(left_x, footer_y + 2.5 * cm)
         text_obj.setFont("Helvetica", 9)
         text_obj.setLeading(12)
         for line in declaration_text: text_obj.textLine(line)
         canvas.drawText(text_obj)
-
-        # Bank Details Box
-        bank_box_x = 1 * cm
-        bank_box_y = footer_y
-        bank_box_width = 9.5 * cm
+        
+        # --- Bank Details Box on the left bottom ---
+        bank_box_width = 9.7 * cm
         bank_box_height = 2.2 * cm
-        canvas.rect(bank_box_x, bank_box_y, bank_box_width, bank_box_height)
+        bank_x = 1 * cm
+        bank_y = footer_y  # same baseline as declaration box
 
-        # Bank details text
+        # Draw rectangle for bank details box
+        canvas.rect(bank_x, bank_y, bank_box_width, bank_box_height)
+
+        # Bank details title
+        canvas.setFont('Helvetica-Bold', 10)
+        canvas.drawString(bank_x + 0.3 * cm, bank_y + bank_box_height - 0.4 * cm, "Bank Details")
+
+        # Bank details content (adjust these to your invoice attributes or static text)
         canvas.setFont('Helvetica', 9)
-        y_pos = bank_box_y + bank_box_height - 0.6 * cm 
-        text_x_pos = bank_box_x + 0.3 * cm
-        canvas.drawString(text_x_pos, y_pos, "Bank A/c. No. 292700050900034")
-        y_pos -= 0.5 * cm 
-        canvas.drawString(text_x_pos, y_pos, "Name of the Bank : TMBL")
-        y_pos -= 0.5 * cm
-        canvas.drawString(text_x_pos, y_pos, "IFSC Code : TMBL0000292")
+        line_height = 0.4 * cm
+        start_y = bank_y + bank_box_height - 0.8 * cm
 
-        # Signature Box (on the right side)
-        right_box_width = 9.5 * cm
+        canvas.drawString(bank_x + 0.3 * cm, start_y, "Beneficiary Name : Kavin Tex")
+        canvas.drawString(bank_x + 0.3 * cm, start_y - line_height, "Bank A/c. No.    : 292700050900034")
+        canvas.drawString(bank_x + 0.3 * cm, start_y - 2 * line_height, "Name of the Bank : TMBL")
+        canvas.drawString(bank_x + 0.3 * cm, start_y - 3 * line_height, "IFSC Code        : TMBL0000292")
+
+        
+        right_box_width = 9.3 * cm
         right_box_height = 2.2 * cm
         right_x = page_width - right_box_width - 1 * cm
         canvas.rect(right_x, footer_y, right_box_width, right_box_height)
