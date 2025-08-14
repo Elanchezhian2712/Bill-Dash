@@ -309,6 +309,27 @@
           updateTotals();
         }
       });
+
+       document.getElementById('buyerGstin').addEventListener('blur', function() {
+          const gstin = this.value.trim();
+          console.log('GSTIN entered:', gstin); 
+          if (gstin.length === 15) {
+            fetch(`/api/buyer-details/?gstin=${gstin}`)
+              .then(response => response.json())
+              .then(data => {
+                console.log('Fetched buyer details:', data);
+                if (data.buyer_name) {
+                  document.getElementById('buyerName').value = data.buyer_name;
+                }
+                if (data.buyer_address) {
+                  document.getElementById('buyerAddress').value = data.buyer_address;
+                }
+                if (data.place_of_supply) {
+                  document.getElementById('buyerStateCode').value = data.place_of_supply;
+                }
+              });
+          }
+        });
       
       itemTableBody.addEventListener('click', function(e) {
           if (e.target.closest('.delete-item-btn')) {

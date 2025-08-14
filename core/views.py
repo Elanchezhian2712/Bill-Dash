@@ -654,7 +654,7 @@ def get_invoices_api(request):
     to_date_str = request.GET.get('to_date')
 
     # Start with the base queryset
-    invoices = Invoice.objects.all().order_by('-invoice_date', '-invoice_number')
+    invoices = Invoice.objects.all().order_by('-id')
 
     # MODIFIED: Apply filters independently instead of requiring both
     if from_date_str:
@@ -687,6 +687,30 @@ def get_invoices_api(request):
     } for invoice in invoices]
               
     return JsonResponse({'invoices': data})
+
+
+from django.http import JsonResponse
+from .models import Invoice
+
+def get_buyer_details(request):
+    print("get_buyer_details called")
+    if not request.GET.get('gstin'):
+        return JsonResponse({'error': 'GSTIN parameter is required'}, status=400)
+    gstin = request.GET.get('gstin')
+    print(f"Received GSTIN: {gstin}")
+    try:
+        invoice = Invoice.objects.filter(buyer_gstin=gstin).first()
+        print(f"Found invoice: {invoice}")
+        if invoice:
+            return JsonResponse({
+                'buyer_name': invoice.buyer_name,
+                'buyer_address': invoice.buyer_address,
+                'place_of_supply': invoice.place_of_supply,
+            })
+        else:
+            return JsonResponse({}, status=204)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
 
 # ------------------------- Logout: For Template User (HTML redirect) -------------------------
 def logout_view(request):

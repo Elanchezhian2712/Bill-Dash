@@ -20,4 +20,6 @@ urlpatterns = [
     path('invoice/<int:invoice_id>/delete/', views.delete_invoice_view, name='delete-invoice'),
     path('view/', views.view_invoices, name='view-invoices'),
     path('core/invoices/', views.get_invoices_api, name='core-get-invoices'),
+    path('api/buyer-details/', views.get_buyer_details, name='buyer-details'),
+
 ]
