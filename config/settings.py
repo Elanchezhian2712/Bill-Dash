@@ -124,7 +124,7 @@ REST_FRAMEWORK = {
 # Near the bottom of config/settings.py
 
 STATIC_URL = 'static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATIC_ROOT = os.path.join(BASE_DIR, 'core', 'static')
 
 # ADD THIS LINE:
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
