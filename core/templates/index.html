@@ -92,12 +92,29 @@
   <!-- Login Script -->
   <script>
     const loginForm = document.getElementById('login-form');
+    const signInBtn = loginForm.querySelector('.auth-form-btn');
 
     loginForm.addEventListener('submit', function (event) {
       event.preventDefault();
 
       const errorMessageDiv = document.getElementById('error-message');
       errorMessageDiv.textContent = '';
+
+      signInBtn.disabled = true;
+      signInBtn.style.display = 'none';
+
+      let loaderBtn = document.getElementById('loader-btn');
+      if (!loaderBtn) {
+        loaderBtn = document.createElement('button');
+        loaderBtn.type = 'button';
+        loaderBtn.className = 'btn btn-primary btn-lg btn-block auth-form-btn';
+        loaderBtn.id = 'loader-btn';
+        loaderBtn.textContent = 'Please wait ...';
+        loaderBtn.disabled = true;
+        signInBtn.parentNode.appendChild(loaderBtn);
+      }
+      loaderBtn.style.display = 'block';
+
       const username = document.getElementById('username').value;
       const password = document.getElementById('password').value;
 
@@ -121,13 +138,15 @@
           return response.json();
         })
         .then(data => {
-          console.log('Login successful!', data);
           localStorage.setItem('authToken', data.token);
           window.location.href = "{% url 'dashboard' %}";
         })
         .catch(error => {
           console.error('Error:', error);
           errorMessageDiv.textContent = error.message;
+          signInBtn.disabled = false;
+          signInBtn.style.display = 'block';
+          loaderBtn.style.display = 'none';
         });
     });
   </script>
