@@ -34,6 +34,9 @@
     .nav .nav-link.active .menu-icon {
       color: white !important;
     }
+    input, textarea {
+      text-transform: uppercase;
+    }
   </style>
 
 </head>
@@ -161,7 +164,7 @@
                         </div>
                         <div class="mb-3">
                           <label for="buyerStateCode" class="form-label">Place of Supply (State Code)</label>
-                          <input type="text" class="form-control" name="place_of_supply" id="buyerStateCode" placeholder="e.g., 33 for Tamil Nadu" required>
+                          <input type="text" maxlength="2" class="form-control" name="place_of_supply" id="buyerStateCode" placeholder="e.g., 33 for Tamil Nadu" required>
                         </div>
                       </div>
                     </div>
@@ -354,8 +357,8 @@
         const itemRows = document.querySelectorAll('#item-table tr');
         const items = [];
         itemRows.forEach(row => {
-            const description = row.querySelector('input[name="description"]').value;
-            const hsn_code = row.querySelector('input[name="hsn_code"]').value;
+            const description = row.querySelector('input[name="description"]').value.toUpperCase();
+            const hsn_code = row.querySelector('input[name="hsn_code"]').value.toUpperCase();
             const quantity = row.querySelector('input[name="quantity"]').value;
             const rate = row.querySelector('input[name="rate"]').value;
             const gst_rate = row.querySelector('input[name="gst_rate"]').value;
@@ -375,7 +378,7 @@
             // General Invoice Details
             invoice_number: document.getElementById('invoiceNo').value,
             invoice_date: document.getElementById('invoiceDate').value,
-            payment_mode: document.getElementById('paymentMode').value,
+            payment_mode: document.getElementById('paymentMode').value.toUpperCase(),
             
             // Seller
             seller_name: document.getElementById('sellerName').value,
@@ -385,15 +388,15 @@
             seller_state_code: document.getElementById('sellerStateCode').value,
 
             // Buyer
-            buyer_name: document.getElementById('buyerName').value,
-            buyer_address: document.getElementById('buyerAddress').value,
-            buyer_gstin: document.getElementById('buyerGstin').value,
-            place_of_supply: document.getElementById('buyerStateCode').value,
+            buyer_name: document.getElementById('buyerName').value.toUpperCase(),
+            buyer_address: document.getElementById('buyerAddress').value.toUpperCase(),
+            buyer_gstin: document.getElementById('buyerGstin').value.toUpperCase(),
+            place_of_supply: document.getElementById('buyerStateCode').value.toUpperCase(),
             
             // Transport
-            transport_name: document.getElementById('transportName').value,
-            transport_address: document.getElementById('transportAddress').value,
-            transport_gstin: document.getElementById('transportGstin').value,
+            transport_name: document.getElementById('transportName').value.toUpperCase(),
+            transport_address: document.getElementById('transportAddress').value.toUpperCase(),
+            transport_gstin: document.getElementById('transportGstin').value.toUpperCase(),
 
             // Item Array
             items: items,
@@ -527,7 +530,7 @@
         str += n[3] != 0 ? (a[Number(n[3])] || b[n[3][0]] + ' ' + a[n[3][1]]) + ' Thousand ' : '';
         str += n[4] != 0 ? (a[Number(n[4])] || b[n[4][0]] + ' ' + a[n[4][1]]) + ' Hundred ' : '';
         str += n[5] != 0 ? ((str != '') ? 'and ' : '') + (a[Number(n[5])] || b[n[5][0]] + ' ' + a[n[5][1]]) : '';
-        return str.trim() + ' Only';
+        return str.trim().toUpperCase() + ' RUPEES ONLY';
       }
     });
   </script>
