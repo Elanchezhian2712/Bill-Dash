@@ -1,37 +1,37 @@
+import os
 import json
 import traceback
-from django.forms import model_to_dict
-from django.http import HttpResponse, JsonResponse
-from django.shortcuts import get_object_or_404, render, redirect
-from django.contrib.auth import authenticate, login, logout, get_user_model
-from django.contrib.auth.decorators import login_required
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny, IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.authtoken.models import Token
+from io import BytesIO
+from decimal import Decimal
+from datetime import datetime
+from num2words import num2words
+from reportlab.lib import colors
+from django.db.models import Sum
+from django.conf import settings
 from rest_framework import status
 from django.db import transaction
-from .models import Invoice, InvoiceItem
-from datetime import datetime
-from django.utils.dateparse import parse_date
-from datetime import date
-from django.db.models import Sum
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
-# --- ReportLab Imports ---
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.enums import TA_CENTER, TA_RIGHT, TA_LEFT
-from reportlab.lib import colors
 from reportlab.lib.units import cm
-from reportlab.lib.pagesizes import A4
-from num2words import num2words
-from decimal import Decimal
-from io import BytesIO
-from django.http import JsonResponse, HttpResponse
-from django.core.serializers.json import DjangoJSONEncoder
-from django.forms.models import model_to_dict
+from datetime import date, timedelta
 from django.utils.timezone import now
+from django.forms import model_to_dict
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfbase import pdfmetrics
+from .models import Invoice, InvoiceItem
+from rest_framework.response import Response
+from reportlab.pdfbase.ttfonts import TTFont
+from django.forms.models import model_to_dict
+from django.utils.dateparse import parse_date
+from rest_framework.authtoken.models import Token
+from django.http import HttpResponse, JsonResponse
+from django.contrib.auth.decorators import login_required
+from django.core.serializers.json import DjangoJSONEncoder
+from reportlab.lib.enums import TA_CENTER, TA_RIGHT, TA_LEFT
+from django.shortcuts import get_object_or_404, render, redirect
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.decorators import api_view, permission_classes
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from django.contrib.auth import authenticate, login, logout, get_user_model
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
 
 
 User = get_user_model()
@@ -67,7 +67,6 @@ def login_api(request):
 
 
 # ------------------------- Protected Views -------------------------
-from datetime import date, timedelta
 @login_required
 def dashboard_view(request):
     today = date.today()
@@ -146,8 +145,6 @@ def dashboard_view(request):
 # ==============================================================================
 #  STEP 1: Refactored PDF Generation Function
 # ==============================================================================
-import os
-from django.conf import settings
 
 
 def generate_invoice_pdf(invoice):
@@ -689,8 +686,6 @@ def get_invoices_api(request):
     return JsonResponse({'invoices': data})
 
 
-from django.http import JsonResponse
-from .models import Invoice
 
 def get_buyer_details(request):
     print("get_buyer_details called")
