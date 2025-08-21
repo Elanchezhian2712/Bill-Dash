@@ -339,10 +339,10 @@ def generate_invoice_pdf(invoice):
         line_height = 0.4 * cm
         start_y = bank_y + bank_box_height - 0.8 * cm
 
-        canvas.drawString(bank_x + 0.3 * cm, start_y, "Beneficiary Name : Kavin Tex")
-        canvas.drawString(bank_x + 0.3 * cm, start_y - line_height, "Bank A/c. No.    : 292700050900034")
-        canvas.drawString(bank_x + 0.3 * cm, start_y - 2 * line_height, "Name of the Bank : TMBL")
-        canvas.drawString(bank_x + 0.3 * cm, start_y - 3 * line_height, "IFSC Code        : TMBL0000292")
+        canvas.drawString(bank_x + 0.3 * cm, start_y, "Beneficiary Name    : Kavin Tex")
+        canvas.drawString(bank_x + 0.3 * cm, start_y - line_height, "Bank A/c. No.          : 292700050900034")
+        canvas.drawString(bank_x + 0.3 * cm, start_y - 2 * line_height, "Name of the Bank   : TMBL")
+        canvas.drawString(bank_x + 0.3 * cm, start_y - 3 * line_height, "IFSC Code              : TMBL0000292")
 
         
         right_box_width = 9.3 * cm
