@@ -32,10 +32,6 @@ local_settings.py
 # Linux
 *.swp
 
-# Ignore Django migration files
-**/migrations/
-!**/migrations/__init__.py
-
 
 
 # Coverage reports

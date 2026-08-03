@@ -1,246 +1,232 @@
+{% extends 'base.html' %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <!-- Required meta tags -->
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-  <title>Kavin Text | Manage Invoice</title>
+{% load humanize %}
 
-  <!-- Core CSS -->
-  <link rel="stylesheet" href="{% static 'assets/vendors/feather/feather.css' %}" />
-  <link rel="stylesheet" href="{% static 'assets/vendors/ti-icons/css/themify-icons.css' %}" />
-  <link rel="stylesheet" href="{% static 'assets/vendors/css/vendor.bundle.base.css' %}" />
-  <link rel="stylesheet" href="{% static 'assets/vendors/font-awesome/css/font-awesome.min.css' %}" />
-  <link rel="stylesheet" href="{% static 'assets/vendors/mdi/css/materialdesignicons.min.css' %}" />
+{% block title %}Edit Invoice #{{ invoice.invoice_number }}{% endblock %}
 
-  <!-- Bootstrap Datepicker CSS from CDN -->
-  <link rel="stylesheet"
-    href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/css/bootstrap-datepicker.min.css">
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/css/bootstrap-datepicker.min.css">
+<style>
+  input, textarea {
+    text-transform: uppercase;
+  }
+</style>
+{% endblock %}
 
-  <!-- Main CSS -->
-  <link rel="stylesheet" href="{% static 'assets/css/style.css' %}" />
-  <link rel="shortcut icon" href="{% static 'assets/images/favicon.png' %}" />
-</head>
-<body>
-<div class="container-scroller">
-  <!-- Navbar -->
-  <nav class="navbar col-lg-12 col-12 p-0 fixed-top d-flex flex-row">
-      <div class="text-center navbar-brand-wrapper d-flex align-items-center justify-content-start">
-        <a class="navbar-brand brand-logo me-5" href="{% url 'dashboard' %}">
-          <img src="{% static 'assets/images/logo.png' %}" class="me-2" alt="logo" />
-          <span class="fw-bold" style="color: #4b49ac">Kavin Text</span>
-        </a>
-        <a class="navbar-brand brand-logo-mini" href="{% url 'dashboard' %}">
-          <img src="{% static 'assets/images/logo.png' %}" alt="logo" />
-        </a>
-      </div>
+{% block content %}
+<div class="content-wrapper bg-light-custom">
+  <div class="mb-4 d-flex justify-content-between align-items-end">
+    <div>
+      <h3 class="mb-1 fw-bold text-dark">Edit Invoice #{{ invoice.invoice_number }}</h3>
+      <p class="text-muted mb-0">Update an existing billing record.</p>
+    </div>
+    <div id="form-message"></div>
+  </div>
 
-      <div class="navbar-menu-wrapper d-flex align-items-center justify-content-end">
-        <button class="navbar-toggler align-self-center" type="button" data-toggle="minimize">
-          <span class="icon-menu"></span>
-        </button>
-
-        <ul class="navbar-nav navbar-nav-right">
-          <li class="nav-item nav-profile dropdown">
-            <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown" id="profileDropdown">
-              <img src="{% static 'assets/images/profile.png' %}" alt="profile" />
-            </a>
-            <div class="dropdown-menu dropdown-menu-right navbar-dropdown" aria-labelledby="profileDropdown">
-              <form id="logout-form" action="{% url 'logout' %}" method="POST" style="display: none;">
-                {% csrf_token %}
-              </form>
-              <a class="dropdown-item" href="#"
-                onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
-                <i class="ti-power-off text-primary"></i> Logout
-              </a>
+  <form class="forms-sample" id="invoice-form" action="{% url 'edit-invoice' invoice.id %}" method="POST">
+    {% csrf_token %}
+    <input type="hidden" id="sellerStateCode" value="33">
+    
+    <!-- Top Row: Parties & Meta -->
+    <div class="row">
+      <!-- Left Column: Parties & Transport -->
+      <div class="col-lg-8">
+        
+        <!-- Seller and Buyer Details -->
+        <div class="card bw-card-light mb-4">
+          <div class="card-body">
+            <h5 class="card-title fw-bold mb-4 border-bottom pb-2">Billing Parties</h5>
+            <div class="row">
+              <!-- Seller -->
+              <div class="col-md-6 border-end">
+                <p class="text-muted small fw-bold mb-3">BILLED FROM (SELLER)</p>
+                <div class="mb-3">
+                  <label class="form-label text-muted small">Seller Name</label>
+                  <input type="text" class="form-control bg-light" value="KAVIN TEX" readonly>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label text-muted small">Address</label>
+                  <textarea class="form-control bg-light" rows="2" readonly>7-1/53, 22ND WARD, AMBETHKAR STREET, Tharamangalam</textarea>
+                </div>
+                <div class="row">
+                  <div class="col-md-6 mb-3">
+                    <label class="form-label text-muted small">GSTIN/UIN</label>
+                    <input type="text" class="form-control bg-light" value="33BUUPR3263F2Z9" readonly>
+                  </div>
+                  <div class="col-md-6 mb-3">
+                    <label class="form-label text-muted small">State</label>
+                    <input type="text" class="form-control bg-light" value="Tamil Nadu" readonly>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Buyer -->
+              <div class="col-md-6">
+                <p class="text-muted small fw-bold mb-3">BILL TO (BUYER)</p>
+                <div class="mb-3">
+                  <label for="buyerName" class="form-label text-muted small">Buyer Name *</label>
+                  <input type="text" class="form-control border-secondary" name="buyer_name" id="buyerName" required>
+                </div>
+                <div class="mb-3">
+                  <label for="buyerAddress" class="form-label text-muted small">Address (Ship to)</label>
+                  <textarea class="form-control border-secondary" name="buyer_address" id="buyerAddress" rows="2"></textarea>
+                </div>
+                <div class="row">
+                  <div class="col-md-6 mb-3">
+                    <label for="buyerGstin" class="form-label text-muted small">GSTIN/UIN</label>
+                    <input type="text" class="form-control border-secondary" name="buyer_gstin" id="buyerGstin" maxlength="15">
+                  </div>
+                  <div class="col-md-6 mb-3">
+                    <label for="buyerStateCode" class="form-label text-muted small">Supply State Code *</label>
+                    <input type="text" maxlength="2" class="form-control border-secondary" name="place_of_supply" id="buyerStateCode" required>
+                  </div>
+                </div>
+              </div>
             </div>
-          </li>
-        </ul>
+          </div>
+        </div>
 
-        <button class="navbar-toggler navbar-toggler-right d-lg-none align-self-center" type="button"
-          data-toggle="offcanvas">
-          <span class="icon-menu"></span>
-        </button>
       </div>
-    </nav>
-  <div class="container-fluid page-body-wrapper">
-    <!-- Sidebar -->
-    <nav class="sidebar sidebar-offcanvas" id="sidebar">
-          <ul class="nav">
-            <li class="nav-item">
-              <a class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" href="{% url 'dashboard' %}">
-                <i class="icon-grid menu-icon"></i>
-                <span class="menu-title">Dashboard</span>
-              </a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link {% if request.resolver_match.url_name == 'invoice' %}active{% endif %}" href="{% url 'invoice' %}">
-                <i class="icon-paper menu-icon"></i>
-                <span class="menu-title">Generate Invoice</span>
-              </a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link {% if request.resolver_match.url_name == 'view-invoices' or request.resolver_match.url_name == 'edit-invoice' %}active{% endif %}" href="{% url 'view-invoices' %}">
-                <i class="ti-pencil-alt menu-icon"></i>
-                <span class="menu-title">Manage Invoices</span>
-              </a>
-            </li>
-          </ul>
-        </nav>
-    <!-- Main Panel -->
-    <div class="main-panel">
-      <div class="content-wrapper">
-        <div class="row">
-          <div class="col-md-12 grid-margin stretch-card">
-            <div class="card shadow p-3 mb-5 bg-white rounded">
-              <div class="card-body">
-                <h4 class="card-title" style="text-align: center; color: #4B49AC; font-size: 28px; font-weight: bold;">
-                  Edit Invoice #{{ invoice.invoice_number }}
-                </h4>
-                <hr/>
-                <form class="forms-sample" id="invoice-form" action="{% url 'edit-invoice' invoice.id %}" method="POST">
-                  {% csrf_token %}
-                  <input type="hidden" id="sellerStateCode" value="33">
 
-                  <!-- Buyer Details -->
-                  <div class="row">
-                    <div class="col-md-12">
-                      <h5 class="card-title">Buyer Details (Bill To)</h5>
-                      <div class="mb-3">
-                        <label for="buyerName" class="form-label">Buyer Name</label>
-                        <input type="text" class="form-control" name="buyer_name" id="buyerName" required>
-                      </div>
-                      <div class="mb-3">
-                        <label for="buyerAddress" class="form-label">Address</label>
-                        <textarea class="form-control" name="buyer_address" id="buyerAddress" rows="3"></textarea>
-                      </div>
-                      <div class="mb-3">
-                        <label for="buyerGstin" class="form-label">GSTIN/UIN</label>
-                        <input type="text" class="form-control" name="buyer_gstin" id="buyerGstin" maxlength="15">
-                      </div>
-                      <div class="mb-3">
-                        <label for="buyerStateCode" class="form-label">Place of Supply (State Code)</label>
-                        <input type="text" class="form-control" name="place_of_supply" id="buyerStateCode" required>
-                      </div>
-                    </div>
-                  </div>
-                   <hr>
-                    <div class="row mb-3">
-                      <div class="col-md-4">
-                        <label for="transportName" class="form-label">Transport Name</label>
-                        <input type="text" class="form-control" name="transport_name" id="transportName" placeholder="Enter transport name" required>
-                      </div>
-                      <div class="col-md-4">
-                        <label for="transportAddress" class="form-label">Transport Address</label>
-                        <input type="text" class="form-control" name="transport_address" id="transportAddress" placeholder="Enter transport address" required>
-                      </div>
-                      <div class="col-md-4">
-                        <label for="transportGstin" class="form-label">Transport GSTIN/UIN</label>
-                        <input type="text" class="form-control" name="transport_gstin" id="transportGstin" placeholder="Enter 15-digit GSTIN/UIN" maxlength="15">
-                      </div>
-                    </div>
-                    <hr>
-                  <!-- Invoice Metadata -->
-                  <div class="row mb-3 mt-3">
-                    <div class="col-md-4">
-                      <label for="invoiceNo" class="form-label">Invoice No.</label>
-                      <input type="text" class="form-control" name="invoice_number" id="invoiceNo" readonly required>
-                    </div>
-                    <div class="col-md-4">
-                      <label for="invoiceDate" class="form-label">Dated</label>
-                      <input type="text" class="form-control" name="invoice_date" id="invoiceDate" readonly>
-                    </div>
-                    <div class="col-md-4 mt-2">
-                      <label for="paymentMode" class="form-label">Mode/Terms of Payment</label>
-                      <input type="text" class="form-control" name="payment_mode" id="paymentMode">
-                    </div>
-                  </div>
-                  <!-- Items Table -->
-                  <div class="row mt-5">
-                    <div class="col-md-12">
-                      <h5 class="card-title">Item Details</h5>
-                      <div class="table-responsive">
-                        <table class="table table-bordered">
-                          <thead>
-                            <tr>
-                              <th style="width:2%">#</th>
-                                <th style="width:28%">Description</th>
-                                <th style="width:12%">HSN/SAC</th>
-                                <th style="width:12%">Quantity</th>
-                                <th style="width:12%">Rate</th>
-                                <th style="width:20%">Amount (₹)</th>
-                                <th style="width:5%">Action</th>
-                            </tr>
-                          </thead>
-                          <tbody id="item-table"></tbody>
-                        </table>
-                      </div>
-                      <button type="button" class="btn btn-primary btn-sm mt-2" id="add-item-btn">Add Item</button>
-                    </div>
-                  </div>
-                  <hr>
-                  <!-- Totals Section -->
-                  <div class="d-flex align-items-center mb-2">
-                    <label class="mb-0 me-2">Total Bundles</label>
-                    <input type="number" name="total_bundles" id="total-bundles" class="form-control text-end w-auto" min="0">
-                  </div>
-                  <div class="row justify-content-end">
-                    <div class="col-md-6">
-                      <div class="form-group row mb-2">
-                        <label class="col-sm-6 col-form-label">Subtotal</label>
-                        <div class="col-sm-6"><input type="text" name="subtotal" id="subtotal" class="form-control text-end" readonly></div>
-                      </div>
-                      <div id="cgst-sgst-rows">
-                        <div class="form-group row mb-2 tax-row">
-                          <label class="col-sm-6 col-form-label">CGST</label>
-                          <div class="col-sm-6"><input type="text" name="cgst_total" id="cgst" class="form-control text-end" readonly></div>
-                        </div>
-                        <div class="form-group row mb-2 tax-row">
-                          <label class="col-sm-6 col-form-label">SGST</label>
-                          <div class="col-sm-6"><input type="text" name="sgst_total" id="sgst" class="form-control text-end" readonly></div>
-                        </div>
-                      </div>
-                      <div class="form-group row mb-2 tax-row" id="igst-row">
-                        <label class="col-sm-6 col-form-label">IGST</label>
-                        <div class="col-sm-6"><input type="text" name="igst_total" id="igst" class="form-control text-end" readonly></div>
-                      </div>
-                      
-                      <!-- REMOVED: Round-off row was here -->
+      <!-- Right Column: Meta -->
+      <div class="col-lg-4">
+        
+        <!-- Metadata -->
+        <div class="card bw-card-light mb-4">
+          <div class="card-body">
+            <h5 class="card-title fw-bold mb-3 border-bottom pb-2">Invoice Meta</h5>
+            <div class="mb-3">
+              <label for="invoiceNo" class="form-label text-muted small">Invoice No. *</label>
+              <input type="text" class="form-control bg-light fw-bold" name="invoice_number" id="invoiceNo" readonly required>
+            </div>
+            <div class="mb-3">
+              <label for="invoiceDate" class="form-label text-muted small">Dated</label>
+              <input type="text" class="form-control border-secondary" name="invoice_date" id="invoiceDate" readonly>
+            </div>
+            <div class="mb-3">
+              <label for="paymentMode" class="form-label text-muted small">Terms of Payment</label>
+              <input type="text" class="form-control border-secondary" name="payment_mode" id="paymentMode">
+            </div>
+          </div>
+        </div>
 
-                      <hr>
-                      <div class="form-group row mb-2">
-                        <label class="col-sm-6 col-form-label fw-bold"><strong>Total Amount</strong></label>
-                        <div class="col-sm-6"><input type="text" name="grand_total" id="grand-total" class="form-control text-end fw-bold" readonly></div>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="form-group mt-3">
-                    <label for="amountInWords" class="form-label">Amount Chargeable (in words)</label>
-                    <input type="text" class="form-control" name="total_in_words" id="amountInWords" readonly>
-                  </div>
-                  <div class="d-flex justify-content-end mt-4">
-                    <a href="{% url 'view-invoices' %}" class="btn btn-light me-2">Cancel</a>
-                    <button type="submit" class="btn btn-primary">Update Invoice</button>
-                  </div>
-                </form>
-                <div id="form-message" class="mt-3"></div>
+      </div>
+    </div>
+
+    <!-- Full Width Row: Transport Details -->
+    <div class="row">
+      <div class="col-12">
+        <div class="card bw-card-light mb-4">
+          <div class="card-body">
+            <h5 class="card-title fw-bold mb-3 border-bottom pb-2">Transport Information</h5>
+            <div class="row g-3">
+              <div class="col-md-4">
+                <label for="transportName" class="form-label text-muted small">Transport Name *</label>
+                <input type="text" class="form-control border-secondary" name="transport_name" id="transportName" required>
+              </div>
+              <div class="col-md-4">
+                <label for="transportAddress" class="form-label text-muted small">Transport Address *</label>
+                <input type="text" class="form-control border-secondary" name="transport_address" id="transportAddress" required>
+              </div>
+              <div class="col-md-4">
+                <label for="transportGstin" class="form-label text-muted small">Transport GSTIN/UIN</label>
+                <input type="text" class="form-control border-secondary" name="transport_gstin" id="transportGstin" maxlength="15">
               </div>
             </div>
           </div>
         </div>
       </div>
     </div>
-  </div>
+
+    <!-- Full Width Row: Items Table -->
+    <div class="row">
+      <div class="col-12">
+        <div class="card bw-card-light mb-4">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2">
+              <h5 class="card-title fw-bold mb-0">Invoice Items</h5>
+              <button type="button" class="btn btn-outline-primary btn-sm px-4" id="add-item-btn"><i class="fa fa-plus me-1"></i> Add Item</button>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-bordered">
+                <thead class="bg-light">
+                  <tr>
+                    <th style="width:5%">#</th>
+                    <th style="width:35%">Description</th>
+                    <th style="width:15%">HSN/SAC</th>
+                    <th style="width:10%">Quantity</th>
+                    <th style="width:15%">Rate</th>
+                    <th style="width:15%">Amount (₹)</th>
+                    <th style="width:5%">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="item-table"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom Row: Totals -->
+    <div class="row">
+      <div class="col-lg-7">
+        <!-- Optional space for Notes or Terms in the future -->
+      </div>
+      <div class="col-lg-5">
+        <!-- Totals -->
+        <div class="card bw-card-light mb-4">
+          <div class="card-body bg-light rounded" style="border: 1px solid rgba(0,0,0,0.06);">
+            <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+              <label class="text-muted mb-0 fw-bold">Total Bundles</label>
+              <input type="number" name="total_bundles" id="total-bundles" class="form-control text-end w-25 border-secondary" min="0">
+            </div>
+            
+            <div class="d-flex justify-content-between mb-2">
+              <span class="text-muted">Subtotal</span>
+              <input type="text" name="subtotal" id="subtotal" class="form-control form-control-sm text-end w-50 bg-white border-0" readonly>
+            </div>
+            
+            <div id="cgst-sgst-rows" style="display: none;">
+              <div class="d-flex justify-content-between mb-2">
+                <span class="text-muted">CGST</span>
+                <input type="text" name="cgst_total" id="cgst" class="form-control form-control-sm text-end w-50 bg-white border-0" readonly>
+              </div>
+              <div class="d-flex justify-content-between mb-2">
+                <span class="text-muted">SGST</span>
+                <input type="text" name="sgst_total" id="sgst" class="form-control form-control-sm text-end w-50 bg-white border-0" readonly>
+              </div>
+            </div>
+            
+            <div id="igst-row" class="d-flex justify-content-between mb-3 border-bottom pb-3">
+              <span class="text-muted">IGST</span>
+              <input type="text" name="igst_total" id="igst" class="form-control form-control-sm text-end w-50 bg-white border-0" readonly>
+            </div>
+            
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h5 class="fw-bold mb-0">Total</h5>
+              <input type="text" name="grand_total" id="grand-total" class="form-control text-end fw-bold bg-white border-0 text-success fs-4 w-50 p-0" readonly>
+            </div>
+
+            <div class="mb-0">
+              <label for="amountInWords" class="form-label text-muted small">Amount in words</label>
+              <textarea class="form-control form-control-sm bg-white border-0 text-muted" name="total_in_words" id="amountInWords" rows="2" readonly></textarea>
+            </div>
+          </div>
+        </div>
+
+        <div class="d-flex justify-content-end gap-3 mt-4">
+          <a href="{% url 'view-invoices' %}" class="btn btn-light shadow-sm">Cancel</a>
+          <button type="submit" class="btn btn-primary px-4 py-2" style="font-size: 16px;">Update Invoice</button>
+        </div>
+      </div>
+    </div>
+  </form>
 </div>
+{% endblock %}
 
-<!-- JS -->
-<script src="{% static 'assets/vendors/js/vendor.bundle.base.js' %}"></script>
+{% block extra_js %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/js/bootstrap-datepicker.min.js"></script>
-<script src="{% static 'assets/js/off-canvas.js' %}"></script>
-<script src="{% static 'assets/js/template.js' %}"></script>
-
-<!-- Custom Edit Invoice Script -->
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const invoiceData = JSON.parse('{{ invoice_data_json|escapejs }}');
@@ -250,6 +236,11 @@ document.addEventListener('DOMContentLoaded', function () {
     const addItemBtn = document.getElementById('add-item-btn');
     const invoiceForm = document.getElementById('invoice-form');
     const formMessageDiv = document.getElementById('form-message');
+
+    // Restrict quantity and rate to numbers only
+    $(document).on('input', '.quantity, .rate', function() {
+      this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\..*?)\..*/g, '$1');
+    });
 
     function populateForm() {
         $('#invoiceDate').datepicker({
@@ -270,26 +261,23 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('transportGstin').value = invoiceData.transport_gstin;
 
         itemsData.forEach(item => addItemRow(item));
-        
-        // No need to set totals manually here, updateTotals() will do it correctly
-        
-        updateTotals(); // Call this once to populate all calculated fields
+        updateTotals(); 
     }
 
     function addItemRow(item = null) {
         const rowCount = itemTableBody.rows.length;
         const newRow = itemTableBody.insertRow();
         newRow.innerHTML = `
-          <td class="row-index">${rowCount + 1}</td>
+          <td class="text-center align-middle row-index">${rowCount + 1}</td>
           <td><input type="text" name="description" class="form-control description" placeholder="Item Name" required></td>
           <td><input type="text" name="hsn_code" class="form-control hsn" placeholder="HSN/SAC"></td>
-          <td><input type="number" name="quantity" class="form-control quantity" value="1" min="0" step="any"></td>
-          <td><input type="number" name="rate" class="form-control rate" value="0" step="0.01" min="0"></td>
+          <td><input type="text" name="quantity" class="form-control quantity text-end" value="1"></td>
+          <td><input type="text" name="rate" class="form-control rate text-end" value="0"></td>
           <td>
-            <input type="text" class="form-control amount" value="0.00" readonly>
+            <input type="text" class="form-control amount text-end" value="0.00" readonly>
             <input type="hidden" name="gst_rate" class="form-control gst-rate" value="5">
           </td>
-          <td><button type="button" class="btn btn-danger btn-sm delete-item-btn"><i class="fa fa-times"></i></button></td>
+          <td class="text-center align-middle"><button type="button" class="btn btn-outline-danger btn-sm delete-item-btn"><i class="fa fa-trash"></i></button></td>
         `;
 
         if (item) {
@@ -351,7 +339,6 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('sgst').value = '0';
         }
 
-        // REMOVED: round-off logic is gone
         const grandTotal = subtotal + totalCGST + totalSGST + totalIGST;
         document.getElementById('grand-total').value = Math.round(grandTotal);
         document.getElementById('amountInWords').value = numberToWords(Math.round(grandTotal));
@@ -395,8 +382,7 @@ document.addEventListener('DOMContentLoaded', function () {
         e.preventDefault();
         const submitButton = e.target.querySelector('button[type="submit"]');
         submitButton.disabled = true;
-        submitButton.innerText = 'Updating...';
-
+        submitButton.innerHTML = '<i class="fa fa-spinner fa-spin me-2"></i>Updating...';
         const items = [];
         Array.from(itemTableBody.rows).forEach(row => {
             const description = row.querySelector('[name=description]').value;
@@ -426,7 +412,6 @@ document.addEventListener('DOMContentLoaded', function () {
             transport_name: document.getElementById('transportName').value,
             transport_address: document.getElementById('transportAddress').value,
             transport_gstin: document.getElementById('transportGstin').value,
-            // REMOVED: 'round_off' key from the payload
             grand_total: document.getElementById('grand-total').value,
             total_in_words: document.getElementById('amountInWords').value,
             items: items,
@@ -443,25 +428,23 @@ document.addEventListener('DOMContentLoaded', function () {
         .then(response => response.json().then(data => ({ status: response.status, body: data })))
         .then(({ status, body }) => {
             if (status === 200) {
-                formMessageDiv.innerHTML = `<div class="alert alert-success">${body.message}</div>`;
+                formMessageDiv.innerHTML = `<div class="alert alert-success mt-0 mb-0">${body.message}</div>`;
                 setTimeout(() => window.location.href = "{% url 'view-invoices' %}", 1500);
             } else {
-                formMessageDiv.innerHTML = `<div class="alert alert-danger">${body.error || 'An error occurred.'}</div>`;
+                formMessageDiv.innerHTML = `<div class="alert alert-danger mt-0 mb-0">${body.error || 'An error occurred.'}</div>`;
                 submitButton.disabled = false;
                 submitButton.innerText = 'Update Invoice';
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            formMessageDiv.innerHTML = `<div class="alert alert-danger">An unexpected network error occurred.</div>`;
+            formMessageDiv.innerHTML = `<div class="alert alert-danger mt-0 mb-0">An unexpected network error occurred.</div>`;
             submitButton.disabled = false;
             submitButton.innerText = 'Update Invoice';
         });
     });
 
-    // Initialize the form with data
     populateForm(); 
 });
 </script>
-</body>
-</html>
+{% endblock %}

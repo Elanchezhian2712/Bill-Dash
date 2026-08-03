@@ -546,9 +546,11 @@ def generate_invoice_pdf_view(request, invoice_id):
     
     pdf_bytes = generate_invoice_pdf(invoice)
 
+    disposition = 'attachment' if request.GET.get('download') else 'inline'
+
     response = HttpResponse(pdf_bytes, content_type='application/pdf')
-    response['Content-Disposition'] = f'attachment; filename="invoice_{invoice.invoice_number}.pdf"'
-    
+    response['Content-Disposition'] = f'{disposition}; filename="invoice_{invoice.invoice_number}.pdf"'
+
     return response
 
     
