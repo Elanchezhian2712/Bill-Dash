@@ -21,7 +21,6 @@ local_settings.py
 
 # Environment variables
 .env
-.env.*
 .venv.*
 
 # VSCode
