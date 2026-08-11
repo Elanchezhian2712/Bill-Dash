@@ -5,7 +5,7 @@ REM Edit the values below to change the credentials.
 
 set DJANGO_SUPERUSER_USERNAME=KavinText
 set DJANGO_SUPERUSER_EMAIL=admin@example.com
-set DJANGO_SUPERUSER_PASSWORD=Admin@123
+set DJANGO_SUPERUSER_PASSWORD=Admin@123#
 
 docker compose exec ^
     -e DJANGO_SUPERUSER_USERNAME=%DJANGO_SUPERUSER_USERNAME% ^

@@ -4,12 +4,10 @@ set -e
 echo "Waiting for database..."
 python - <<'PY'
 import os, time, socket
-from urllib.parse import urlparse
 
-url = os.getenv("DATABASE_URL", "")
-if url:
-    parsed = urlparse(url)
-    host, port = parsed.hostname, parsed.port or 5432
+host = os.getenv("POSTGRES_HOST", "")
+port = int(os.getenv("POSTGRES_PORT") or 5432)
+if host:
     for _ in range(60):
         try:
             with socket.create_connection((host, port), timeout=2):
