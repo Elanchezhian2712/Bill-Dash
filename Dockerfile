@@ -17,7 +17,8 @@ RUN pip install --no-cache-dir --timeout 120 --retries 10 -r requirements.txt
 COPY . .
 
 COPY docker/entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+# Strip CR - a Windows checkout turns the shebang into "#!/bin/sh\r"
+RUN sed -i 's/\r$//' /entrypoint.sh && chmod +x /entrypoint.sh
 
 EXPOSE 8000
 

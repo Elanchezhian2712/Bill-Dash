@@ -1,0 +1,8 @@
+# Shell scripts run inside Linux containers - they must keep LF endings
+# even when checked out on Windows, or the shebang becomes "#!/bin/sh\r".
+*.sh text eol=lf
+docker/entrypoint.sh text eol=lf
+
+# Windows-only helpers keep CRLF
+*.cmd text eol=crlf
+*.bat text eol=crlf
