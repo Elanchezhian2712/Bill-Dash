@@ -17,6 +17,7 @@ DEBUG = False
 
 # Allowed hosts
 ALLOWED_HOSTS = ['*']
+CSRF_TRUSTED_ORIGINS = ['http://localhost:8080', 'http://127.0.0.1:8080', 'http://localhost', 'http://127.0.0.1']
 
 # Custom user model
 AUTH_USER_MODEL = 'core.User'

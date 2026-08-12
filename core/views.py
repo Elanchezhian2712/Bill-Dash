@@ -28,7 +28,8 @@ from django.core.serializers.json import DjangoJSONEncoder
 from reportlab.lib.enums import TA_CENTER, TA_RIGHT, TA_LEFT
 from django.shortcuts import get_object_or_404, render, redirect
 from rest_framework.permissions import AllowAny, IsAuthenticated
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, authentication_classes
+from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from django.contrib.auth import authenticate, login, logout, get_user_model
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
@@ -37,13 +38,16 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, 
 User = get_user_model()
 
 # ------------------------- Public View: Login Page -------------------------
+@ensure_csrf_cookie
 def login_view(request):
     return render(request, 'index.html')
 
 
 # ------------------------- API: Login Auth Endpoint -------------------------
+@csrf_exempt
 @api_view(['POST'])
 @permission_classes([AllowAny])
+@authentication_classes([])
 def login_api(request):
     username = request.data.get('username')
     password = request.data.get('password')
@@ -639,9 +643,13 @@ def invoice_view(request):
 
 @login_required
 def view_invoices(request):
-    return render(request, 'pages/invoice/view-invoices.html')
+    from_date = request.session.get('invoice_from_date', '')
+    to_date = request.session.get('invoice_to_date', '')
+    return render(request, 'pages/invoice/view-invoices.html', {
+        'from_date': from_date,
+        'to_date': to_date
+    })
 
-# your views.py
 
 @login_required
 def get_invoices_api(request):
@@ -649,31 +657,46 @@ def get_invoices_api(request):
     API endpoint to get invoices.
     Can be filtered by from_date, to_date, or both.
     """
-    from_date_str = request.GET.get('from_date')
-    to_date_str = request.GET.get('to_date')
+    if request.GET.get('clear') == 'true':
+        request.session.pop('invoice_from_date', None)
+        request.session.pop('invoice_to_date', None)
+        request.session.modified = True
+        return JsonResponse({'invoices': []})
+    else:
+        if 'from_date' in request.GET or 'to_date' in request.GET:
+            from_date_str = request.GET.get('from_date', '').strip()
+            to_date_str = request.GET.get('to_date', '').strip()
+            if from_date_str:
+                request.session['invoice_from_date'] = from_date_str
+            else:
+                request.session.pop('invoice_from_date', None)
+
+            if to_date_str:
+                request.session['invoice_to_date'] = to_date_str
+            else:
+                request.session.pop('invoice_to_date', None)
+            request.session.modified = True
+        else:
+            from_date_str = request.session.get('invoice_from_date', '')
+            to_date_str = request.session.get('invoice_to_date', '')
 
     # Start with the base queryset
     invoices = Invoice.objects.all().order_by('-id')
 
-    # MODIFIED: Apply filters independently instead of requiring both
     if from_date_str:
         try:
             from_date = parse_date(from_date_str)
             if from_date:
-                # Filter for invoices on or after the from_date
                 invoices = invoices.filter(invoice_date__gte=from_date)
         except (ValueError, TypeError):
-            # Ignore invalid date format
             pass
 
     if to_date_str:
         try:
             to_date = parse_date(to_date_str)
             if to_date:
-                # Filter for invoices on or before the to_date
                 invoices = invoices.filter(invoice_date__lte=to_date)
         except (ValueError, TypeError):
-            # Ignore invalid date format
             pass
             
     # Serialize the final filtered data

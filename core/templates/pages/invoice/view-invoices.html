@@ -34,16 +34,17 @@
       <div class="card bw-card-light w-100">
         <div class="card-body p-3">
           <form id="dateFilterForm" class="row g-3 align-items-center m-0">
-            <div class="col-md-5">
+            <div class="col-md-4">
               <label for="fromDate" class="form-label text-muted small fw-bold mb-1">FROM DATE</label>
-              <input type="text" class="form-control datepicker bg-light border-0" id="fromDate" name="fromDate" placeholder="YYYY-MM-DD">
+              <input type="text" class="form-control datepicker bg-light border-0" id="fromDate" name="fromDate" placeholder="YYYY-MM-DD" value="{{ from_date }}">
             </div>
-            <div class="col-md-5">
+            <div class="col-md-4">
               <label for="toDate" class="form-label text-muted small fw-bold mb-1">TO DATE</label>
-              <input type="text" class="form-control datepicker bg-light border-0" id="toDate" name="toDate" placeholder="YYYY-MM-DD">
+              <input type="text" class="form-control datepicker bg-light border-0" id="toDate" name="toDate" placeholder="YYYY-MM-DD" value="{{ to_date }}">
             </div>
-            <div class="col-md-2 mt-auto text-end">
-              <button type="submit" class="btn btn-primary px-4 py-2 w-auto">Get</button>
+            <div class="col-md-4 mt-auto text-end">
+              <button type="submit" class="btn btn-primary px-4 py-2">Get</button>
+              <button type="button" id="clearFilterBtn" class="btn btn-secondary px-4 py-2 ms-2">Clear</button>
             </div>
           </form>
         </div>
@@ -89,9 +90,8 @@
 
 <script>
   $(document).ready(function () {
-    flatpickr(".datepicker", {
-      dateFormat: "Y-m-d",
-    });
+    const fromDatePicker = flatpickr("#fromDate", { dateFormat: "Y-m-d" });
+    const toDatePicker = flatpickr("#toDate", { dateFormat: "Y-m-d" });
 
     const baseApiUrl = "{% url 'core-get-invoices' %}";
     let currentApiUrl = null;
@@ -161,36 +161,66 @@
     searchInput.attr('id', 'invoiceTableSearch');
     searchInput.parent('label').attr('for', 'invoiceTableSearch');
 
-    function loadInvoices() {
-      if (!currentApiUrl) {
+    function loadInvoices(url) {
+      const fetchUrl = url || currentApiUrl;
+      if (!fetchUrl) {
         return;
       }
-      $.getJSON(currentApiUrl, function (json) {
+      $.getJSON(fetchUrl, function (json) {
         invoiceTable.clear();
         invoiceTable.rows.add(json.invoices || []);
         invoiceTable.draw();
       });
     }
 
+    // Restore date filter from session / localStorage on page load
+    let activeFrom = $('#fromDate').val() || localStorage.getItem('invoice_from_date') || '';
+    let activeTo = $('#toDate').val() || localStorage.getItem('invoice_to_date') || '';
+
+    if (activeFrom) {
+      fromDatePicker.setDate(activeFrom);
+    }
+    if (activeTo) {
+      toDatePicker.setDate(activeTo);
+    }
+
+    if (activeFrom || activeTo) {
+      const params = [];
+      if (activeFrom) params.push(`from_date=${activeFrom}`);
+      if (activeTo) params.push(`to_date=${activeTo}`);
+      currentApiUrl = baseApiUrl + '?' + params.join('&');
+      loadInvoices();
+    }
+
     $('#dateFilterForm').on('submit', function (e) {
       e.preventDefault();
-      const fromDate = $('#fromDate').val();
-      const toDate = $('#toDate').val();
-      let newApiUrl = baseApiUrl;
+      const fromDate = $('#fromDate').val().trim();
+      const toDate = $('#toDate').val().trim();
+
+      if (fromDate) localStorage.setItem('invoice_from_date', fromDate);
+      else localStorage.removeItem('invoice_from_date');
+
+      if (toDate) localStorage.setItem('invoice_to_date', toDate);
+      else localStorage.removeItem('invoice_to_date');
+
       const params = [];
+      if (fromDate) params.push(`from_date=${fromDate}`);
+      if (toDate) params.push(`to_date=${toDate}`);
 
-      if (fromDate) {
-        params.push(`from_date=${fromDate}`);
-      }
-      if (toDate) {
-        params.push(`to_date=${toDate}`);
-      }
-
-      if (params.length > 0) {
-        newApiUrl += `?${params.join('&')}`;
-      }
-      currentApiUrl = newApiUrl;
+      currentApiUrl = baseApiUrl + (params.length > 0 ? `?${params.join('&')}` : '');
       loadInvoices();
+    });
+
+    $('#clearFilterBtn').on('click', function () {
+      fromDatePicker.clear();
+      toDatePicker.clear();
+      $('#fromDate').val('');
+      $('#toDate').val('');
+      localStorage.removeItem('invoice_from_date');
+      localStorage.removeItem('invoice_to_date');
+      invoiceTable.clear().draw();
+      currentApiUrl = null;
+      $.getJSON(baseApiUrl + '?clear=true');
     });
 
     $('#invoiceTable tbody').on('click', '.delete-invoice-btn', function () {

@@ -465,14 +465,26 @@
 
       const username = document.getElementById('username').value;
       const password = document.getElementById('password').value;
+      const csrfInput = document.querySelector('[name=csrfmiddlewaretoken]');
+      const csrfToken = csrfInput ? csrfInput.value : null;
+
+      if (!csrfToken) {
+        errorMessageDiv.textContent = 'CSRF token not found. Reload the page and try again.';
+        signInBtn.disabled = false;
+        signInBtn.style.display = 'flex';
+        if (loaderBtn) loaderBtn.style.display = 'none';
+        return;
+      }
 
       const apiUrl = '/core/login/';
 
       fetch(apiUrl, {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+          'X-CSRFToken': csrfToken,
+          'X-Requested-With': 'XMLHttpRequest'
         },
         body: JSON.stringify({
           username: username,
