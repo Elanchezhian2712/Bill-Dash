@@ -288,7 +288,7 @@ def generate_invoice_pdf(invoice):
             y = box_bottom + section_height - top_padding
             canvas.setFont('Helvetica', 9)
             canvas.drawString(text_x, y, "Transport Details")
-            y -= (line_spacing + 0.15 * cm)
+            y -= (line_spacing + 0.30 * cm)
             canvas.setFont('Helvetica-Bold', 10)
             canvas.drawString(text_x, y, getattr(invoice, 'transport_name', '').upper())
             y -= line_spacing
