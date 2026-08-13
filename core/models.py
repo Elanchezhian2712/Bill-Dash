@@ -45,6 +45,7 @@ class InvoiceItem(models.Model):
 class Invoice(models.Model):
     invoice_number = models.CharField(max_length=100, unique=True)
     invoice_date = models.DateField()
+    e_way_bill_no = models.CharField(max_length=50, blank=True, null=True)
     seller_name = models.CharField(max_length=255, default="KAVIN TEX")
     seller_address = models.TextField(default="7-1/53, 22ND WARD, AMBETHKAR STREET, Tharamangalam")
     seller_gstin = models.CharField(max_length=15, default="33BUUPR3263F2Z9")

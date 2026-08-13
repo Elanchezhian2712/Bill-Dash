@@ -168,7 +168,7 @@ def generate_invoice_pdf(invoice):
     for item in invoice.items.all():
         amount = item.quantity * item.rate
         invoice_items.append({
-            "desc": item.description, "hsn": item.hsn_code,
+            "desc": item.description.upper() if item.description else "", "hsn": item.hsn_code,
             "qty": item.quantity, "rate": D(item.rate),
             "amount": D(amount), "gst_rate": D(item.gst_rate)
         })
@@ -204,7 +204,7 @@ def generate_invoice_pdf(invoice):
         canvas.setFont('Helvetica-Bold', 10)
         canvas.drawString(1.2 * cm, 27 * cm, invoice.seller_name)
         canvas.setFont('Helvetica', 9)
-        y = 26.6 * cm
+        y = 26.45 * cm
         for line in invoice.seller_address.split(','):
              canvas.drawString(1.2 * cm, y, line.strip())
              y -= 0.4 * cm
@@ -219,90 +219,107 @@ def generate_invoice_pdf(invoice):
         row_height = 0.8 * cm
         for i in range(1, 7):
             canvas.line(box_left, box_top - i * row_height, box_left + box_width, box_top - i * row_height)
-        canvas.line(col_split, box_top, col_split, box_top - box_height)
+        
+        # Vertical dividers (skip row 2)
+        canvas.line(col_split, box_top, col_split, box_top - row_height)
+        canvas.line(col_split, box_top - 2 * row_height, col_split, box_top - box_height)
+        
         labels = [
             ("Invoice No.", invoice.invoice_number, "Dated", invoice.invoice_date.strftime('%d-%b-%Y')),
-            ("Delivery Note", "", "Mode/Terms of Payment", invoice.payment_mode or ""),
-            ("Reference No. & Date.", "", "Other References", ""),
+            ("E-way bill no", invoice.e_way_bill_no or "", None, None),
+            ("Mode/Terms of Payment", invoice.payment_mode or "", "Other References", ""),
             ("Buyer's Order No.", "", "Dated", ""),
             ("Dispatch Doc No.", "", "Delivery Note Date", ""),
             ("Dispatched through", "", "Destination", "")
         ]
         canvas.setFont('Helvetica', 8)
         text_padding_x = 4
-        text_padding_y = 10
-        for i, (l1, v1, l2, v2) in enumerate(labels):
+        text_padding_y = 7.5
+        for i, row_data in enumerate(labels):
             y_text = box_top - i * row_height - text_padding_y
+            l1, v1, l2, v2 = row_data
+            
             canvas.drawString(box_left + text_padding_x, y_text, l1)
             canvas.setFont('Helvetica-Bold', 9)
-            canvas.drawString(box_left + text_padding_x, y_text - 9, str(v1))
+            canvas.drawString(box_left + text_padding_x, y_text - 11.5, str(v1))
             canvas.setFont('Helvetica', 8)
-            canvas.drawString(col_split + text_padding_x, y_text, l2)
-            canvas.setFont('Helvetica-Bold', 9)
-            canvas.drawString(col_split + text_padding_x, y_text - 9, str(v2))
-            canvas.setFont('Helvetica', 8)
+            
+            if l2 is not None:
+                canvas.drawString(col_split + text_padding_x, y_text, l2)
+                canvas.setFont('Helvetica-Bold', 9)
+                canvas.drawString(col_split + text_padding_x, y_text - 11.5, str(v2))
+                canvas.setFont('Helvetica', 8)
         canvas.drawString(box_left + text_padding_x, (box_top - box_height - 0.4 * cm), "Terms of Delivery")
 
-        # --- CORRECTED Consignee, Buyer & Transport Details ---
-        # Main container box for the three sections
-       
-        # Main container box for the three sections
+        # --- CORRECTED Buyer & Transport Details ---
+        # Main container box for the sections
         box_left, box_bottom, box_width, box_height = 1 * cm, 19.8 * cm, 9 * cm, 4.5 * cm
         canvas.rect(box_left, box_bottom, box_width, box_height, stroke=1, fill=0)
 
-        # Define section boundaries for three equal sections
-        section_height = box_height / 3
-        top_divider_y = box_bottom + 2 * section_height
-        bottom_divider_y = box_bottom + 1 * section_height
-
-        # Draw two horizontal divider lines to create three distinct sections
-        canvas.line(box_left, top_divider_y, box_left + box_width, top_divider_y)
-        canvas.line(box_left, bottom_divider_y, box_left + box_width, bottom_divider_y)
-
-        # --- Drawing parameters for better layout control ---
         text_x = 1.2 * cm
-        line_spacing = 0.32 * cm  # Reduced spacing to fit 4 lines per section
-        top_padding = 0.33 * cm    # Padding from the top of each section
+        line_spacing = 0.35 * cm  
+        top_padding = 0.35 * cm
 
-        # --- Section 1: Consignee (Ship to) ---
-        y = top_divider_y + section_height - top_padding # Start from top of section
-        canvas.setFont('Helvetica', 9)
-        canvas.drawString(text_x, y, "Consignee (Ship to)")
-        y -= line_spacing
-        canvas.setFont('Helvetica-Bold', 10)
-        canvas.drawString(text_x, y, getattr(invoice, 'buyer_name', ''))
-        y -= line_spacing
-        canvas.setFont('Helvetica', 9)
-        canvas.drawString(text_x, y, getattr(invoice, 'buyer_address', ''))
-        y -= line_spacing
-        canvas.drawString(text_x, y, f"GSTIN/UIN: {getattr(invoice, 'buyer_gstin', '')}")
+        has_transport = bool(getattr(invoice, 'transport_name', '') or getattr(invoice, 'transport_gstin', '') or getattr(invoice, 'transport_address', ''))
 
-        # --- Section 2: Buyer (Bill to) ---
-        y = bottom_divider_y + section_height - top_padding # Start from top of middle section
-        canvas.setFont('Helvetica', 9)
-        canvas.drawString(text_x, y, "Buyer (Bill to)")
-        y -= line_spacing
-        canvas.setFont('Helvetica-Bold', 10)
-        canvas.drawString(text_x, y, getattr(invoice, 'buyer_name', ''))
-        y -= line_spacing
-        canvas.setFont('Helvetica', 9)
-        canvas.drawString(text_x, y, getattr(invoice, 'buyer_address', ''))
-        y -= line_spacing
-        canvas.drawString(text_x, y, f"Place of Supply: {getattr(invoice, 'place_of_supply', '')}")
+        if has_transport:
+            section_height = box_height / 2
+            divider_y = box_bottom + section_height
+            canvas.line(box_left, divider_y, box_left + box_width, divider_y)
+            
+            # Buyer section (Top half)
+            y = box_bottom + box_height - top_padding
+            canvas.setFont('Helvetica', 9)
+            canvas.drawString(text_x, y, "Buyer (Bill to)")
+            y -= (line_spacing + 0.15 * cm)
+            canvas.setFont('Helvetica-Bold', 10)
+            canvas.drawString(text_x, y, getattr(invoice, 'buyer_name', '').upper())
+            y -= (line_spacing + 0.15 * cm)
+            canvas.setFont('Helvetica', 9)
+            if getattr(invoice, 'buyer_address', ''):
+                canvas.drawString(text_x, y, getattr(invoice, 'buyer_address', '').upper())
+                y -= line_spacing
+            if getattr(invoice, 'buyer_gstin', ''):
+                canvas.drawString(text_x, y, f"GSTIN/UIN: {getattr(invoice, 'buyer_gstin', '').upper()}")
+                y -= line_spacing
+            canvas.drawString(text_x, y, f"Place of Supply: {getattr(invoice, 'place_of_supply', '').upper()}")
 
-        # --- Section 3: Transport Details ---
-        y = box_bottom + section_height - top_padding # Start from top of bottom section
-        canvas.setFont('Helvetica', 9)
-        canvas.drawString(text_x, y, "Transport Details")
-        y -= line_spacing
-        canvas.setFont('Helvetica-Bold', 10)
-        canvas.drawString(text_x, y, getattr(invoice, 'transport_name', ''))
-        y -= line_spacing
-        canvas.setFont('Helvetica', 9)
-        canvas.drawString(text_x, y, f"GSTIN/UIN: {getattr(invoice, 'transport_gstin', '')}")
-        y -= line_spacing
-        canvas.drawString(text_x, y, f"Address: {getattr(invoice, 'transport_address', '')}") # Restored this line
-        # --- END OF CORRECTION --
+            # Transport section (Bottom half)
+            y = box_bottom + section_height - top_padding
+            canvas.setFont('Helvetica', 9)
+            canvas.drawString(text_x, y, "Transport Details")
+            y -= line_spacing
+            canvas.setFont('Helvetica-Bold', 10)
+            canvas.drawString(text_x, y, getattr(invoice, 'transport_name', '').upper())
+            y -= line_spacing
+            canvas.setFont('Helvetica', 9)
+            if getattr(invoice, 'transport_gstin', ''):
+                canvas.drawString(text_x, y, f"GSTIN/UIN: {getattr(invoice, 'transport_gstin', '').upper()}")
+                y -= line_spacing
+            if getattr(invoice, 'transport_address', ''):
+                canvas.drawString(text_x, y, f"Address: {getattr(invoice, 'transport_address', '').upper()}")
+        else:
+            # Buyer section (Full box)
+            y = box_bottom + box_height - top_padding
+            canvas.setFont('Helvetica', 9)
+            canvas.drawString(text_x, y, "Buyer (Bill to)")
+            y -= (line_spacing + 0.15 * cm)
+            canvas.setFont('Helvetica-Bold', 10)
+            canvas.drawString(text_x, y, getattr(invoice, 'buyer_name', '').upper())
+            y -= (line_spacing + 0.15 * cm)
+            canvas.setFont('Helvetica', 9)
+            
+            if getattr(invoice, 'buyer_address', ''):
+                for line in getattr(invoice, 'buyer_address', '').split(','):
+                    if line.strip():
+                        canvas.drawString(text_x, y, line.strip().upper())
+                        y -= line_spacing
+            
+            if getattr(invoice, 'buyer_gstin', ''):
+                canvas.drawString(text_x, y, f"GSTIN/UIN: {getattr(invoice, 'buyer_gstin', '').upper()}")
+                y -= line_spacing
+            canvas.drawString(text_x, y, f"Place of Supply: {getattr(invoice, 'place_of_supply', '').upper()}")
+        # --- END OF CORRECTION ---
 
         # Declaration and Signature Box
 
@@ -340,7 +357,7 @@ def generate_invoice_pdf(invoice):
         line_height = 0.4 * cm
         start_y = bank_y + bank_box_height - 0.8 * cm
 
-        canvas.drawString(bank_x + 0.3 * cm, start_y, "Beneficiary Name    : Kavin Tex")
+        canvas.drawString(bank_x + 0.3 * cm, start_y, "Beneficiary Name    : KAVIN TEX")
         canvas.drawString(bank_x + 0.3 * cm, start_y - line_height, "Bank A/c. No.          : 292700050900034")
         canvas.drawString(bank_x + 0.3 * cm, start_y - 2 * line_height, "Name of the Bank   : TMBL")
         canvas.drawString(bank_x + 0.3 * cm, start_y - 3 * line_height, "IFSC Code              : TMBL0000292")
@@ -467,7 +484,7 @@ def generate_invoice_pdf(invoice):
     # --- Final Summaries (on the last page) ---
     story.append(Paragraph("E. & O.E", style_right))
     story.append(Spacer(1, 0.5 * cm))
-    story.append(Paragraph(f"<b>Amount Chargeable (in words)</b><br/>{invoice.total_in_words}", style_normal))
+    story.append(Paragraph(f"<b>Amount Chargeable (in words)</b><br/><b>{invoice.total_in_words}</b>", style_normal))
     story.append(Spacer(1, 0.5 * cm))
 
     # Tax Summary Table
@@ -603,6 +620,7 @@ def invoice_view(request):
                     buyer_name=data.get('buyer_name'),
                     buyer_address=data.get('buyer_address'),
                     buyer_gstin=data.get('buyer_gstin', ''),
+                    e_way_bill_no=data.get('e_way_bill_no'),
                     place_of_supply=data.get('place_of_supply'),
                     payment_mode=data.get('payment_mode'),
                     total_bundles=data.get('total_bundles', 0),
@@ -776,6 +794,7 @@ def edit_invoice_view(request, invoice_id):
                 invoice.buyer_name = data.get('buyer_name')
                 invoice.buyer_address = data.get('buyer_address')
                 invoice.buyer_gstin = data.get('buyer_gstin', '')
+                invoice.e_way_bill_no = data.get('e_way_bill_no', '')
                 invoice.place_of_supply = data.get('place_of_supply')
                 invoice.payment_mode = data.get('payment_mode')
                 invoice.total_bundles = data.get('total_bundles', 0)

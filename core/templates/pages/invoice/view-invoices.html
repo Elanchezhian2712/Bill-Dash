@@ -32,19 +32,19 @@
     <!-- Filter Section -->
     <div class="col-12 mb-4">
       <div class="card bw-card-light w-100">
-        <div class="card-body p-3">
-          <form id="dateFilterForm" class="row g-3 align-items-center m-0">
+        <div class="card-body p-4">
+          <form id="dateFilterForm" class="row g-3 align-items-end m-0">
             <div class="col-md-4">
-              <label for="fromDate" class="form-label text-muted small fw-bold mb-1">FROM DATE</label>
-              <input type="text" class="form-control datepicker bg-light border-0" id="fromDate" name="fromDate" placeholder="YYYY-MM-DD" value="{{ from_date }}">
+              <label for="fromDate" class="form-label text-muted small fw-bold mb-2">FROM DATE</label>
+              <input type="text" class="form-control datepicker bg-light border-0 p-3" id="fromDate" name="fromDate" placeholder="YYYY-MM-DD" value="{{ from_date }}">
             </div>
             <div class="col-md-4">
-              <label for="toDate" class="form-label text-muted small fw-bold mb-1">TO DATE</label>
-              <input type="text" class="form-control datepicker bg-light border-0" id="toDate" name="toDate" placeholder="YYYY-MM-DD" value="{{ to_date }}">
+              <label for="toDate" class="form-label text-muted small fw-bold mb-2">TO DATE</label>
+              <input type="text" class="form-control datepicker bg-light border-0 p-3" id="toDate" name="toDate" placeholder="YYYY-MM-DD" value="{{ to_date }}">
             </div>
-            <div class="col-md-4 mt-auto text-end">
-              <button type="submit" class="btn btn-primary px-4 py-2">Get</button>
-              <button type="button" id="clearFilterBtn" class="btn btn-secondary px-4 py-2 ms-2">Clear</button>
+            <div class="col-md-4 text-end">
+              <button type="submit" class="btn btn-dark px-4 py-2 rounded-pill fw-bold shadow-sm">Get</button>
+              <button type="button" id="clearFilterBtn" class="btn btn-outline-dark px-4 py-2 rounded-pill fw-bold shadow-sm ms-2">Clear</button>
             </div>
           </form>
         </div>
