@@ -216,7 +216,7 @@
                 {% csrf_token %}
               </form>
               <a class="dropdown-item" href="#"
-                onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
+                onclick="event.preventDefault(); localStorage.removeItem('invoice_from_date'); localStorage.removeItem('invoice_to_date'); document.getElementById('logout-form').submit();">
                 <i class="ti-power-off text-primary"></i> Logout
               </a>
             </div>
