@@ -345,7 +345,7 @@
                                 optionsContainer.append(optionHtml);
                             });
                             
-                            const autofillModal = new bootstrap.Modal(document.getElementById('autofillModal'));
+                            const autofillModal = bootstrap.Modal.getOrCreateInstance(document.getElementById('autofillModal'));
                             autofillModal.show();
                         }
                     }
