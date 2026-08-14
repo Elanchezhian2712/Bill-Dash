@@ -617,8 +617,8 @@ def invoice_view(request):
                     seller_gstin=data.get('seller_gstin'),
                     seller_state=data.get('seller_state'),
                     seller_state_code=data.get('seller_state_code'),
-                    buyer_name=data.get('buyer_name'),
-                    buyer_address=data.get('buyer_address'),
+                    buyer_name=data.get('buyer_name').upper() if data.get('buyer_name') else '',
+                    buyer_address=data.get('buyer_address').upper() if data.get('buyer_address') else '',
                     buyer_gstin=data.get('buyer_gstin', ''),
                     e_way_bill_no=data.get('e_way_bill_no'),
                     place_of_supply=data.get('place_of_supply'),
@@ -737,16 +737,27 @@ def get_buyer_details(request):
     gstin = request.GET.get('gstin')
     print(f"Received GSTIN: {gstin}")
     try:
-        invoice = Invoice.objects.filter(buyer_gstin=gstin).first()
-        print(f"Found invoice: {invoice}")
-        if invoice:
-            return JsonResponse({
-                'buyer_name': invoice.buyer_name,
-                'buyer_address': invoice.buyer_address,
-                'place_of_supply': invoice.place_of_supply,
-            })
+        invoices = Invoice.objects.filter(buyer_gstin=gstin).values(
+            'buyer_name', 'buyer_address', 'place_of_supply'
+        ).distinct()
+        print(f"Found {invoices.count()} distinct records for GSTIN: {gstin}")
+        
+        buyers = list(invoices)
+        if buyers:
+            return JsonResponse({'buyers': buyers})
         else:
-            return JsonResponse({}, status=204)
+            return JsonResponse({'buyers': []})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+
+def get_hsn_descriptions(request):
+    hsn = request.GET.get('hsn')
+    if not hsn:
+        return JsonResponse({'error': 'HSN parameter is required'}, status=400)
+    
+    try:
+        descriptions = list(InvoiceItem.objects.filter(hsn_code=hsn).exclude(description__exact='').values_list('description', flat=True).distinct())
+        return JsonResponse({'descriptions': descriptions})
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)
 
@@ -791,8 +802,8 @@ def edit_invoice_view(request, invoice_id):
             with transaction.atomic():
                 # --- Update main Invoice ---
                 invoice.invoice_date = datetime.strptime(data.get('invoice_date'), '%d-%m-%Y').date()
-                invoice.buyer_name = data.get('buyer_name')
-                invoice.buyer_address = data.get('buyer_address')
+                invoice.buyer_name = data.get('buyer_name').upper() if data.get('buyer_name') else ''
+                invoice.buyer_address = data.get('buyer_address').upper() if data.get('buyer_address') else ''
                 invoice.buyer_gstin = data.get('buyer_gstin', '')
                 invoice.e_way_bill_no = data.get('e_way_bill_no', '')
                 invoice.place_of_supply = data.get('place_of_supply')

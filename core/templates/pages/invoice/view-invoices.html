@@ -36,15 +36,21 @@
           <form id="dateFilterForm" class="row g-3 align-items-end m-0">
             <div class="col-md-4">
               <label for="fromDate" class="form-label text-muted small fw-bold mb-2">FROM DATE</label>
-              <input type="text" class="form-control datepicker bg-light border-0 p-3" id="fromDate" name="fromDate" placeholder="YYYY-MM-DD" value="{{ from_date }}">
+              <div class="input-group shadow-sm" style="border-radius: 12px; overflow: hidden; border: 1px solid rgba(0,0,0,0.08);">
+                <span class="input-group-text bg-white border-0 text-muted px-3"><i class="mdi mdi-calendar-range fs-5"></i></span>
+                <input type="text" class="form-control datepicker border-0 ps-0 py-3" id="fromDate" name="fromDate" placeholder="Select start date" value="{{ from_date }}" style="box-shadow: none; font-size: 15px;">
+              </div>
             </div>
             <div class="col-md-4">
               <label for="toDate" class="form-label text-muted small fw-bold mb-2">TO DATE</label>
-              <input type="text" class="form-control datepicker bg-light border-0 p-3" id="toDate" name="toDate" placeholder="YYYY-MM-DD" value="{{ to_date }}">
+              <div class="input-group shadow-sm" style="border-radius: 12px; overflow: hidden; border: 1px solid rgba(0,0,0,0.08);">
+                <span class="input-group-text bg-white border-0 text-muted px-3"><i class="mdi mdi-calendar-check fs-5"></i></span>
+                <input type="text" class="form-control datepicker border-0 ps-0 py-3" id="toDate" name="toDate" placeholder="Select end date" value="{{ to_date }}" style="box-shadow: none; font-size: 15px;">
+              </div>
             </div>
             <div class="col-md-4 text-end">
-              <button type="submit" class="btn btn-dark px-4 py-2 rounded-pill fw-bold shadow-sm">Get</button>
-              <button type="button" id="clearFilterBtn" class="btn btn-outline-dark px-4 py-2 rounded-pill fw-bold shadow-sm ms-2">Clear</button>
+              <button type="submit" class="btn btn-primary px-4 py-2 rounded-pill fw-bold shadow-sm">Get</button>
+              <button type="button" id="clearFilterBtn" class="btn btn-outline-primary px-4 py-2 rounded-pill fw-bold shadow-sm ms-2">Clear</button>
             </div>
           </form>
         </div>

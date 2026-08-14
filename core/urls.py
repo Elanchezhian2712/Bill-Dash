@@ -21,5 +21,6 @@ urlpatterns = [
     path('view/', views.view_invoices, name='view-invoices'),
     path('core/invoices/', views.get_invoices_api, name='core-get-invoices'),
     path('api/buyer-details/', views.get_buyer_details, name='buyer-details'),
+    path('api/hsn-descriptions/', views.get_hsn_descriptions, name='hsn-descriptions'),
 
 ]

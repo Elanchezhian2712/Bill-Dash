@@ -151,7 +151,7 @@
               <h5 class="card-title fw-bold mb-0">Invoice Items</h5>
               <button type="button" class="btn btn-outline-primary btn-sm px-4" id="add-item-btn"><i class="fa fa-plus me-1"></i> Add Item</button>
             </div>
-            <div class="table-responsive">
+            <div class="table-responsive" style="overflow: visible;">
               <table class="table table-bordered">
                 <thead class="bg-light">
                   <tr>
@@ -226,6 +226,28 @@
       </div>
     </div>
   </form>
+
+  <!-- Autofill Modal -->
+  <div class="modal fade" id="autofillModal" tabindex="-1" aria-labelledby="autofillModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="autofillModalLabel">Select Buyer Details</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted small mb-3">Multiple records found for this GSTIN. Please select one to autofill, or choose to fill manually.</p>
+          <div id="autofillOptions" class="list-group">
+            <!-- Options will be appended here via JS -->
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-primary" data-bs-dismiss="modal">Manually Fill</button>
+          <button type="button" class="btn btn-primary" id="applyAutofillBtn">Apply</button>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 {% endblock %}
 
@@ -278,14 +300,86 @@
     
     checkTaxType();
 
+    // Autofill Logic for Buyer GSTIN
+    let availableBuyers = [];
+    
+    $('#buyerGstin').on('blur', function() {
+        const gstin = $(this).val().trim();
+        const buyerName = $('#buyerName').val().trim();
+        const buyerAddress = $('#buyerAddress').val().trim();
+        
+        if (gstin && !buyerName && !buyerAddress) {
+            $.ajax({
+                url: '/api/buyer-details/',
+                type: 'GET',
+                data: { gstin: gstin },
+                success: function(response) {
+                    if (response.buyers && response.buyers.length > 0) {
+                        if (response.buyers.length === 1) {
+                            // Autofill immediately
+                            const buyer = response.buyers[0];
+                            $('#buyerName').val(buyer.buyer_name || '');
+                            $('#buyerAddress').val(buyer.buyer_address || '');
+                            if (buyer.place_of_supply) {
+                                $('#buyerStateCode').val(buyer.place_of_supply);
+                                checkTaxType();
+                            }
+                        } else {
+                            // Show modal
+                            availableBuyers = response.buyers;
+                            const optionsContainer = $('#autofillOptions');
+                            optionsContainer.empty();
+                            
+                            availableBuyers.forEach((buyer, index) => {
+                                const checked = index === 0 ? 'checked' : '';
+                                const optionHtml = `
+                                    <label class="list-group-item list-group-item-action d-flex gap-3">
+                                        <input class="form-check-input flex-shrink-0" type="radio" name="buyerOption" id="buyerOption${index}" value="${index}" ${checked}>
+                                        <span>
+                                            <strong class="d-block">${buyer.buyer_name || 'N/A'}</strong>
+                                            <small class="d-block text-muted">${buyer.buyer_address || 'No Address'}</small>
+                                            <small class="d-block text-muted">Place of Supply: ${buyer.place_of_supply || 'N/A'}</small>
+                                        </span>
+                                    </label>
+                                `;
+                                optionsContainer.append(optionHtml);
+                            });
+                            
+                            const autofillModal = new bootstrap.Modal(document.getElementById('autofillModal'));
+                            autofillModal.show();
+                        }
+                    }
+                }
+            });
+        }
+    });
+
+    $('#applyAutofillBtn').on('click', function() {
+        const selectedIndex = $('input[name="buyerOption"]:checked').val();
+        if (selectedIndex !== undefined && availableBuyers[selectedIndex]) {
+            const buyer = availableBuyers[selectedIndex];
+            $('#buyerName').val(buyer.buyer_name || '');
+            $('#buyerAddress').val(buyer.buyer_address || '');
+            if (buyer.place_of_supply) {
+                $('#buyerStateCode').val(buyer.place_of_supply);
+                checkTaxType();
+            }
+            const modal = bootstrap.Modal.getInstance(document.getElementById('autofillModal'));
+            if(modal) {
+                modal.hide();
+            }
+        }
+    });
+
     // 2. Add New Item Row
     function addRow() {
       rowCount++;
       const rowHtml = `
           <tr>
             <td class="text-center align-middle">${rowCount}</td>
-            <td>
-              <input type="text" class="form-control desc-input" name="description[]" required>
+            <td class="position-relative">
+              <input type="text" class="form-control desc-input" name="description[]" required autocomplete="off">
+              <div class="hsn-suggestions list-group position-absolute w-100 mt-1" style="z-index: 1000; display: none; max-height: 200px; overflow-y: auto; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"></div>
             </td>
             <td>
               <input type="text" class="form-control hsn-input" name="hsn_sac[]" required>
@@ -317,6 +411,48 @@
       $(this).closest('tr').remove();
       updateRowNumbers();
       calculateTotals();
+    });
+
+    // HSN/SAC Description Autofill
+    itemTableBody.on('input', '.hsn-input', function() {
+        const hsn = $(this).val().trim();
+        const row = $(this).closest('tr');
+        const suggestionBox = row.find('.hsn-suggestions');
+        
+        if (hsn.length > 0) {
+            $.ajax({
+                url: '/api/hsn-descriptions/',
+                type: 'GET',
+                data: { hsn: hsn },
+                success: function(response) {
+                    if (response.descriptions && response.descriptions.length > 0) {
+                        suggestionBox.empty();
+                        response.descriptions.forEach(desc => {
+                            suggestionBox.append(`<button type="button" class="list-group-item list-group-item-action suggestion-item py-3 px-3 small text-uppercase">${desc}</button>`);
+                        });
+                        suggestionBox.show();
+                    } else {
+                        suggestionBox.hide();
+                    }
+                }
+            });
+        } else {
+            suggestionBox.hide();
+        }
+    });
+
+    itemTableBody.on('click', '.suggestion-item', function() {
+        const desc = $(this).text();
+        const row = $(this).closest('tr');
+        row.find('.desc-input').val(desc);
+        row.find('.hsn-suggestions').hide();
+    });
+
+    // Hide suggestions when clicking outside
+    $(document).on('click', function(e) {
+        if (!$(e.target).closest('.position-relative').length) {
+            $('.hsn-suggestions').hide();
+        }
     });
 
     // Update row numbers after deletion
