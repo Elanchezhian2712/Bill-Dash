@@ -8,6 +8,7 @@ venv/
 env/
 .venv/
 ENV/
+billenv/
 
 # Django stuff
 *.log
@@ -22,6 +23,7 @@ local_settings.py
 # Environment variables
 .env
 .venv.*
+.billevn.*
 
 # VSCode
 .vscode/
