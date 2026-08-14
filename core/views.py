@@ -449,13 +449,6 @@ def generate_invoice_pdf(invoice):
             # Register the font
             pdfmetrics.registerFont(TTFont('DejaVuSans', font_path))
 
-            custom_rupee_style = ParagraphStyle(
-                name='rupee_style',
-                parent=style_bold_right,
-                fontName='DejaVuSans',
-            )
-            # Paragraph(f"<b>\u20B9 {invoice.grand_total:.2f}</b>", custom_rupee_style)
-
             table_data.append([
                 '', 
                 Paragraph("<b>TOTAL</b>", style_bold_right), 
@@ -463,7 +456,7 @@ def generate_invoice_pdf(invoice):
                 Paragraph(f"<b>{total_qty} Nos</b>", style_bold_right), 
                 '', 
                 '', 
-                Paragraph(f"<b>\u20B9 {invoice.grand_total:.2f}</b>", custom_rupee_style)
+                Paragraph(f'<b><font name="DejaVuSans">\u20B9</font> {invoice.grand_total:.2f}</b>', style_bold_right)
             ])
 
             # =========================================================================
