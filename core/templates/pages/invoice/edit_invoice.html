@@ -5,7 +5,7 @@
 {% block title %}Edit Invoice #{{ invoice.invoice_number }}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/css/bootstrap-datepicker.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 <style>
   input, textarea {
     text-transform: uppercase;
@@ -202,9 +202,11 @@
               </div>
             </div>
             
-            <div id="igst-row" class="d-flex justify-content-between mb-3 border-bottom pb-3">
-              <span class="text-muted">IGST</span>
-              <input type="text" name="igst_total" id="igst" class="form-control form-control-sm text-end w-50 bg-white border-0" readonly>
+            <div id="igst-row" style="display: none;">
+              <div class="d-flex justify-content-between mb-3 border-bottom pb-3">
+                <span class="text-muted">IGST</span>
+                <input type="text" name="igst_total" id="igst" class="form-control form-control-sm text-end w-50 bg-white border-0" readonly>
+              </div>
             </div>
             
             <div class="d-flex justify-content-between align-items-center mb-3">
@@ -230,7 +232,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/js/bootstrap-datepicker.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const invoiceData = JSON.parse('{{ invoice_data_json|escapejs }}');
@@ -247,11 +249,10 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     function populateForm() {
-        $('#invoiceDate').datepicker({
-            format: "dd-mm-yyyy",
-            autoclose: true,
-            todayHighlight: true
-        }).datepicker('update', invoiceData.invoice_date);
+        flatpickr("#invoiceDate", {
+            dateFormat: "d-m-Y",
+            defaultDate: invoiceData.invoice_date
+        });
 
         document.getElementById('invoiceNo').value = invoiceData.invoice_number;
         document.getElementById('eWayBillNo').value = invoiceData.e_way_bill_no || '';

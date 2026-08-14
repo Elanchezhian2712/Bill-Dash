@@ -8,7 +8,7 @@
 <!-- Select2 plugin CSS -->
 <link rel="stylesheet" href="{% static 'assets/vendors/select2/select2.min-style.css' %}" />
 <link rel="stylesheet" href="{% static 'assets/vendors/select2-bootstrap-theme/select2-bootstrap.min.css' %}" />
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/css/bootstrap-datepicker.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 <style>
   input, textarea {
     text-transform: uppercase;
@@ -202,9 +202,11 @@
               </div>
             </div>
             
-            <div id="igst-row" class="d-flex justify-content-between mb-3 border-bottom pb-3">
-              <span class="text-muted">IGST</span>
-              <input type="text" name="igst_total" id="igst" class="form-control form-control-sm text-end w-50 bg-white border-0" value="0.00" readonly>
+            <div id="igst-row" style="display: none;">
+              <div class="d-flex justify-content-between mb-3 border-bottom pb-3">
+                <span class="text-muted">IGST</span>
+                <input type="text" name="igst_total" id="igst" class="form-control form-control-sm text-end w-50 bg-white border-0" value="0.00" readonly>
+              </div>
             </div>
             
             <div class="d-flex justify-content-between align-items-center mb-3">
@@ -253,17 +255,16 @@
 
 {% block extra_js %}
 <script src="{% static 'assets/vendors/select2/select2.min.js' %}"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/js/bootstrap-datepicker.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script src="{% static 'assets/js/select2.js' %}"></script>
 
 <script>
   $(document).ready(function () {
     // 1. Datepicker Initialization
-    $('#invoiceDate').datepicker({
-      format: 'dd-mm-yyyy',
-      todayHighlight: true,
-      autoclose: true
-    }).datepicker("setDate", new Date());
+    flatpickr("#invoiceDate", {
+      dateFormat: "d-m-Y",
+      defaultDate: "today"
+    });
 
     const itemTableBody = $('#item-table');
     let rowCount = 0;

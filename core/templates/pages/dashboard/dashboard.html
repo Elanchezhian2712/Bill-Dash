@@ -99,9 +99,224 @@
       </div>
     </div>
   </div>
+
+  <!-- Charts Row -->
+  <div class="row mt-4">
+    <div class="col-lg-6 grid-margin stretch-card mb-4">
+      <div class="card shadow-sm border-0">
+        <div class="card-body">
+          <p class="card-title fw-bold text-dark mb-4">Top Clients by Revenue (FY)</p>
+          <div class="d-flex justify-content-center">
+            <div style="width: 75%; max-width: 300px;">
+              <canvas id="topClientsChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-6 grid-margin stretch-card mb-4">
+      <div class="card shadow-sm border-0">
+        <div class="card-body">
+          <p class="card-title fw-bold text-dark mb-4">Top Items/Services by Revenue (FY)</p>
+          <div class="d-flex justify-content-center">
+            <div style="width: 75%; max-width: 300px;">
+              <canvas id="topItemsChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Additional Charts Row -->
+  <div class="row mt-4">
+    <div class="col-lg-8 grid-margin stretch-card mb-4">
+      <div class="card shadow-sm border-0">
+        <div class="card-body">
+          <p class="card-title fw-bold text-dark mb-4">Revenue Trend (FY)</p>
+          <div style="height: 300px; width: 100%;">
+            <canvas id="trendChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-4 grid-margin stretch-card mb-4">
+      <div class="card shadow-sm border-0">
+        <div class="card-body">
+          <p class="card-title fw-bold text-dark mb-4">Invoice Count (FY)</p>
+          <div style="height: 300px; width: 100%;">
+            <canvas id="stateChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script src="{% static 'assets/js/dashboard.js' %}"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const clientsLabels = {{ top_clients_labels|safe }};
+    const clientsData = {{ top_clients_data|safe }};
+    const itemsLabels = {{ top_items_labels|safe }};
+    const itemsData = {{ top_items_data|safe }};
+    const trendLabels = {{ trend_labels|safe }};
+    const trendData = {{ trend_data|safe }};
+    const countLabels = {{ count_labels|safe }};
+    const countData = {{ count_data|safe }};
+
+    const colors1 = ['#4B49AC', '#98BDFF', '#7978E9', '#F3797E', '#248AFD', '#FFC100'];
+    const colors2 = ['#F3797E', '#FFC100', '#248AFD', '#4B49AC', '#98BDFF', '#7978E9'];
+
+    const commonOptions = {
+      responsive: true,
+      maintainAspectRatio: true,
+      cutout: '70%',
+      animation: { animateScale: true, animateRotate: true },
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { padding: 20, color: '#6C7383', font: { family: 'sans-serif', size: 12 } }
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              let label = context.label || '';
+              if (label) { label += ': '; }
+              if (context.parsed !== null) {
+                label += '₹ ' + context.parsed.toLocaleString('en-IN', {minimumFractionDigits: 2});
+              }
+              return label;
+            }
+          }
+        }
+      }
+    };
+
+    if (document.getElementById('topClientsChart') && clientsData.length > 0) {
+      new Chart(document.getElementById('topClientsChart'), {
+        type: 'doughnut',
+        data: {
+          labels: clientsLabels,
+          datasets: [{
+            data: clientsData,
+            backgroundColor: colors1,
+            borderWidth: 0,
+            hoverOffset: 4
+          }]
+        },
+        options: commonOptions
+      });
+    }
+
+    if (document.getElementById('topItemsChart') && itemsData.length > 0) {
+      new Chart(document.getElementById('topItemsChart'), {
+        type: 'doughnut',
+        data: {
+          labels: itemsLabels,
+          datasets: [{
+            data: itemsData,
+            backgroundColor: colors2,
+            borderWidth: 0,
+            hoverOffset: 4
+          }]
+        },
+        options: commonOptions
+      });
+    }
+
+    if (document.getElementById('trendChart') && trendData.length > 0) {
+      new Chart(document.getElementById('trendChart'), {
+        type: 'line',
+        data: {
+          labels: trendLabels,
+          datasets: [{
+            label: 'Revenue',
+            data: trendData,
+            borderColor: '#4B49AC',
+            backgroundColor: 'rgba(75, 73, 172, 0.1)',
+            borderWidth: 2,
+            fill: true,
+            tension: 0.4,
+            pointBackgroundColor: '#fff',
+            pointBorderColor: '#4B49AC',
+            pointBorderWidth: 2,
+            pointRadius: 4,
+            pointHoverRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: commonOptions.plugins.tooltip
+          },
+          scales: {
+            x: {
+              grid: { display: false, drawBorder: false },
+              ticks: { color: '#6C7383', font: { family: 'sans-serif' } }
+            },
+            y: {
+              grid: { color: '#F0F0F0', drawBorder: false },
+              ticks: {
+                color: '#6C7383',
+                font: { family: 'sans-serif' },
+                callback: function(value) {
+                  return '₹ ' + value.toLocaleString('en-IN');
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    if (document.getElementById('stateChart') && countData.some(d => d > 0)) {
+      new Chart(document.getElementById('stateChart'), {
+        type: 'bar',
+        data: {
+          labels: countLabels,
+          datasets: [{
+            label: 'Invoices',
+            data: countData,
+            backgroundColor: '#F3797E',
+            borderRadius: 4,
+            borderWidth: 0
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return context.parsed.y + ' Invoices';
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false, drawBorder: false },
+              ticks: { color: '#6C7383', font: { family: 'sans-serif' } }
+            },
+            y: {
+              grid: { color: '#F0F0F0', drawBorder: false },
+              ticks: {
+                color: '#6C7383',
+                font: { family: 'sans-serif' },
+                stepSize: 1
+              }
+            }
+          }
+        }
+      });
+    }
+  });
+</script>
 {% endblock %}

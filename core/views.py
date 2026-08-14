@@ -6,7 +6,8 @@ from decimal import Decimal
 from datetime import datetime
 from num2words import num2words
 from reportlab.lib import colors
-from django.db.models import Sum
+from django.db.models import Sum, F, Count
+from django.db.models.functions import TruncMonth
 from django.conf import settings
 from rest_framework import status
 from django.db import transaction
@@ -117,6 +118,26 @@ def dashboard_view(request):
     buyers_before_this_month = set(Invoice.objects.filter(invoice_date__lt=start_of_month).values_list('buyer_name', flat=True).distinct())
     new_clients_count = len(buyers_this_month - buyers_before_this_month)
 
+    # --- Chart Data ---
+    # Top 5 Clients by Revenue (All time or Yearly? Let's use Yearly for dashboard relevance)
+    top_clients_qs = yearly_invoices.values('buyer_name').annotate(total_revenue=Sum('grand_total')).order_by('-total_revenue')[:5]
+    top_clients_labels = json.dumps([c['buyer_name'] for c in top_clients_qs], cls=DjangoJSONEncoder)
+    top_clients_data = json.dumps([float(c['total_revenue'] or 0) for c in top_clients_qs])
+
+    # Top 5 Products/Services by Revenue
+    top_items_qs = InvoiceItem.objects.filter(invoice__in=yearly_invoices).values('description').annotate(total_revenue=Sum(F('quantity') * F('rate'))).order_by('-total_revenue')[:5]
+    top_items_labels = json.dumps([i['description'] for i in top_items_qs], cls=DjangoJSONEncoder)
+    top_items_data = json.dumps([float(i['total_revenue'] or 0) for i in top_items_qs])
+
+    # Revenue Trend (Monthly)
+    monthly_trend_qs = yearly_invoices.annotate(month=TruncMonth('invoice_date')).values('month').annotate(total_revenue=Sum('grand_total')).order_by('month')
+    trend_labels = json.dumps([c['month'].strftime('%b %Y') for c in monthly_trend_qs if c['month']], cls=DjangoJSONEncoder)
+    trend_data = json.dumps([float(c['total_revenue'] or 0) for c in monthly_trend_qs])
+
+    # Invoice Count Trend (Monthly)
+    monthly_count_qs = yearly_invoices.annotate(month=TruncMonth('invoice_date')).values('month').annotate(invoice_count=Count('id')).order_by('month')
+    count_labels = json.dumps([c['month'].strftime('%b %Y') for c in monthly_count_qs if c['month']], cls=DjangoJSONEncoder)
+    count_data = json.dumps([c['invoice_count'] for c in monthly_count_qs])
 
     context = {
         # Original Stats for top cards
@@ -138,6 +159,16 @@ def dashboard_view(request):
 
         'start_of_financial_year': start_of_financial_year,
         'end_of_financial_year': end_of_financial_year,
+
+        # Chart Data
+        'top_clients_labels': top_clients_labels,
+        'top_clients_data': top_clients_data,
+        'top_items_labels': top_items_labels,
+        'top_items_data': top_items_data,
+        'trend_labels': trend_labels,
+        'trend_data': trend_data,
+        'count_labels': count_labels,
+        'count_data': count_data,
     }
 
     return render(request, 'pages/dashboard/dashboard.html', context)
