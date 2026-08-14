@@ -303,7 +303,7 @@
     // Autofill Logic for Buyer GSTIN
     let availableBuyers = [];
     
-    $('#buyerGstin').on('blur', function() {
+    $('#buyerGstin').on('blur focusout', function(e) {
         const gstin = $(this).val().trim();
         const buyerName = $('#buyerName').val().trim();
         const buyerAddress = $('#buyerAddress').val().trim();

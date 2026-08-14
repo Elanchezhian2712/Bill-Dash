@@ -734,10 +734,10 @@ def get_buyer_details(request):
     print("get_buyer_details called")
     if not request.GET.get('gstin'):
         return JsonResponse({'error': 'GSTIN parameter is required'}, status=400)
-    gstin = request.GET.get('gstin')
+    gstin = request.GET.get('gstin', '').strip()
     print(f"Received GSTIN: {gstin}")
     try:
-        invoices = Invoice.objects.filter(buyer_gstin=gstin).values(
+        invoices = Invoice.objects.filter(buyer_gstin__iexact=gstin).values(
             'buyer_name', 'buyer_address', 'place_of_supply'
         ).distinct()
         print(f"Found {invoices.count()} distinct records for GSTIN: {gstin}")
