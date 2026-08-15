@@ -106,8 +106,8 @@
       <div class="card shadow-sm border-0">
         <div class="card-body">
           <p class="card-title fw-bold text-dark mb-4">Top Clients by Revenue (FY)</p>
-          <div class="d-flex justify-content-center">
-            <div style="width: 75%; max-width: 300px;">
+          <div class="w-100" style="overflow-x: auto;">
+            <div style="min-width: 500px; height: 350px; margin: 0 auto;">
               <canvas id="topClientsChart"></canvas>
             </div>
           </div>
@@ -118,8 +118,8 @@
       <div class="card shadow-sm border-0">
         <div class="card-body">
           <p class="card-title fw-bold text-dark mb-4">Top Items/Services by Revenue (FY)</p>
-          <div class="d-flex justify-content-center">
-            <div style="width: 75%; max-width: 300px;">
+          <div class="w-100" style="overflow-x: auto;">
+            <div style="min-width: 500px; height: 350px; margin: 0 auto;">
               <canvas id="topItemsChart"></canvas>
             </div>
           </div>
@@ -172,7 +172,7 @@
 
     const commonOptions = {
       responsive: true,
-      maintainAspectRatio: true,
+      maintainAspectRatio: false,
       cutout: '70%',
       animation: { animateScale: true, animateRotate: true },
       plugins: {
