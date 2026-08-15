@@ -252,7 +252,18 @@
           maintainAspectRatio: false,
           plugins: {
             legend: { display: false },
-            tooltip: commonOptions.plugins.tooltip
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  let label = context.dataset.label || '';
+                  if (label) { label += ': '; }
+                  if (context.parsed.y !== null) {
+                    label += '₹ ' + context.parsed.y.toLocaleString('en-IN', {minimumFractionDigits: 2});
+                  }
+                  return label;
+                }
+              }
+            }
           },
           scales: {
             x: {
