@@ -151,6 +151,74 @@
       </div>
     </div>
   </div>
+
+  <!-- Recent Activity Row -->
+  <div class="row mt-4">
+    <div class="col-12 grid-margin stretch-card mb-4">
+      <div class="card shadow-sm border-0 bw-card-light w-100">
+        <div class="card-body p-4">
+          <p class="card-title fw-bold text-dark mb-4">Recent Activity (Last 5 Bills)</p>
+          <div class="table-responsive" style="overflow: visible;">
+            <table class="table table-borderless table-hover mb-0 align-middle" style="width:100%; border-collapse: separate; border-spacing: 0 8px;">
+              <thead style="background-color: #f8f9fc;">
+                <tr>
+                  <th class="text-muted fw-bold py-3 px-4" style="border-top-left-radius: 10px; border-bottom-left-radius: 10px; font-size: 0.75rem; letter-spacing: 1px; text-transform: uppercase;">#</th>
+                  <th class="text-muted fw-bold py-3" style="font-size: 0.75rem; letter-spacing: 1px; text-transform: uppercase;">Invoice No</th>
+                  <th class="text-muted fw-bold py-3" style="font-size: 0.75rem; letter-spacing: 1px; text-transform: uppercase;">Client</th>
+                  <th class="text-muted fw-bold py-3" style="font-size: 0.75rem; letter-spacing: 1px; text-transform: uppercase;">Date Created</th>
+                  <th class="text-muted fw-bold py-3 text-end" style="font-size: 0.75rem; letter-spacing: 1px; text-transform: uppercase;">Amount</th>
+                  <th class="text-muted fw-bold py-3 text-center px-4" style="border-top-right-radius: 10px; border-bottom-right-radius: 10px; font-size: 0.75rem; letter-spacing: 1px; text-transform: uppercase;">Action</th>
+                </tr>
+              </thead>
+              <tbody class="border-0">
+                {% for invoice in recent_invoices %}
+                <tr style="box-shadow: 0 2px 6px rgba(0,0,0,0.02); transition: all 0.3s ease; border-radius: 10px;">
+                  <td class="text-muted px-4 py-3" style="border-top-left-radius: 10px; border-bottom-left-radius: 10px;">{{ forloop.counter }}</td>
+                  <td class="py-3">
+                    <span class="badge" style="background-color: rgba(75, 73, 172, 0.1); color: #4B49AC; font-weight: 600; padding: 7px 12px; border-radius: 6px; letter-spacing: 0.5px;">{{ invoice.invoice_number }}</span>
+                  </td>
+                  <td class="py-3 fw-bold text-dark" style="font-size: 0.95rem;">{{ invoice.buyer_name }}</td>
+                  <td class="py-3 text-muted" style="font-size: 0.85rem;">
+                    {{ invoice.created_on|date:"d M Y, h:i A" }}
+                  </td>
+                  <td class="py-3 text-end fw-bold text-dark" style="font-size: 1.05rem;">
+                    ₹ {{ invoice.grand_total|floatformat:2|intcomma }}
+                  </td>
+                  <td class="text-center px-4 py-3" style="border-top-right-radius: 10px; border-bottom-right-radius: 10px;">
+                    <div class="dropdown text-center">
+                      <button type="button" class="btn action-menu-btn rounded-circle" data-bs-toggle="dropdown" aria-expanded="false" title="Actions" style="background: #f8f9fa; border: 1px solid #eee; width: 35px; height: 35px; padding: 0; display: inline-flex; align-items: center; justify-content: center; transition: all 0.2s;">
+                        <i class="fa fa-ellipsis-v text-secondary"></i>
+                      </button>
+                      <ul class="dropdown-menu dropdown-menu-end action-menu shadow border-0" style="border-radius: 12px; padding: 8px;">
+                        <li>
+                          <a href="{% url 'generate-invoice-pdf' invoice.id %}" class="dropdown-item py-2 rounded" target="_blank" style="transition: all 0.2s;">
+                            <i class="fa fa-file-pdf-o text-info me-2"></i> View PDF
+                          </a>
+                        </li>
+                        <li>
+                          <a href="{% url 'generate-invoice-pdf' invoice.id %}?download=1" class="dropdown-item py-2 rounded" style="transition: all 0.2s;">
+                            <i class="fa fa-download text-success me-2"></i> Download PDF
+                          </a>
+                        </li>
+                      </ul>
+                    </div>
+                  </td>
+                </tr>
+                {% empty %}
+                <tr>
+                  <td colspan="6" class="text-center text-muted py-5" style="border-radius: 10px;">
+                    <i class="mdi mdi-file-document-outline mb-2 d-block" style="font-size: 2rem; color: #ddd;"></i>
+                    No recent bills found.
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 {% endblock %}
 

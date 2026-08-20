@@ -139,6 +139,9 @@ def dashboard_view(request):
     count_labels = json.dumps([c['month'].strftime('%b %Y') for c in monthly_count_qs if c['month']], cls=DjangoJSONEncoder)
     count_data = json.dumps([c['invoice_count'] for c in monthly_count_qs])
 
+    # Recent 5 invoices based on created_on
+    recent_invoices = Invoice.objects.order_by('-created_on')[:5]
+
     context = {
         # Original Stats for top cards
         'total_invoice_count': total_invoice_count,
@@ -169,6 +172,7 @@ def dashboard_view(request):
         'trend_data': trend_data,
         'count_labels': count_labels,
         'count_data': count_data,
+        'recent_invoices': recent_invoices,
     }
 
     return render(request, 'pages/dashboard/dashboard.html', context)

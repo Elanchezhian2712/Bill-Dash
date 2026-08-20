@@ -18,6 +18,28 @@
   #invoiceTable_wrapper .table-responsive {
       overflow: visible;
   }
+  
+  /* Premium Table Design for DataTables */
+  #invoiceTable { border-collapse: separate !important; border-spacing: 0 8px !important; border-bottom: none !important; margin-top: 10px !important;}
+  #invoiceTable thead th {
+    background-color: #f8f9fc !important;
+    color: #6c757d; font-weight: bold; padding: 12px 16px; font-size: 0.75rem; letter-spacing: 1px; text-transform: uppercase; border: none !important;
+  }
+  #invoiceTable thead th:first-child { border-top-left-radius: 10px; border-bottom-left-radius: 10px; }
+  #invoiceTable thead th:last-child { border-top-right-radius: 10px; border-bottom-right-radius: 10px; }
+  
+  #invoiceTable tbody tr {
+    box-shadow: 0 2px 6px rgba(0,0,0,0.02); transition: all 0.3s ease; border-radius: 10px;
+  }
+  #invoiceTable tbody td {
+    padding: 12px 16px !important; border: none !important; vertical-align: middle;
+  }
+  #invoiceTable tbody td:first-child { border-top-left-radius: 10px; border-bottom-left-radius: 10px; color: #6c757d; }
+  #invoiceTable tbody td:last-child { border-top-right-radius: 10px; border-bottom-right-radius: 10px; }
+  
+  .dataTables_wrapper .dataTables_paginate .paginate_button {
+      border-radius: 8px !important; border: none !important;
+  }
 </style>
 {% endblock %}
 
@@ -61,16 +83,16 @@
     <div class="col-12">
       <div class="card bw-card-light w-100">
         <div class="card-body p-4">
-          <div class="table-responsive">
-            <table id="invoiceTable" class="table table-hover mb-0" style="width:100%">
-              <thead class="bg-light">
+          <div class="table-responsive" style="overflow: visible;">
+            <table id="invoiceTable" class="table table-borderless table-hover mb-0 align-middle" style="width:100%">
+              <thead>
                 <tr>
-                  <th class="border-top-0 pt-3 pb-3">S.No</th>
-                  <th class="border-top-0 pt-3 pb-3">Invoice No</th>
-                  <th class="border-top-0 pt-3 pb-3">Buyer Name</th>
-                  <th class="border-top-0 pt-3 pb-3">Date</th>
-                  <th class="border-top-0 pt-3 pb-3 text-end">Amount</th>
-                  <th class="border-top-0 pt-3 pb-3 text-center">Actions</th>
+                  <th>S.No</th>
+                  <th>Invoice No</th>
+                  <th>Buyer Name</th>
+                  <th>Date</th>
+                  <th class="text-end">Amount</th>
+                  <th class="text-center">Actions</th>
                 </tr>
               </thead>
               <tbody class="border-0">
@@ -115,44 +137,63 @@
           },
           "orderable": false
         },
-        { "data": "invoice_number" },
-        { "data": "buyer_name" },
-        { "data": "invoice_date" },
+        { 
+          "data": "invoice_number",
+          "render": function(data, type, row) {
+             return `<span class="badge" style="background-color: rgba(75, 73, 172, 0.1); color: #4B49AC; font-weight: 600; padding: 7px 12px; border-radius: 6px; letter-spacing: 0.5px;">${data}</span>`;
+          }
+        },
+        { 
+          "data": "buyer_name",
+          "render": function(data, type, row) {
+             return `<span class="fw-bold text-dark" style="font-size: 0.95rem;">${data}</span>`;
+          }
+        },
+        { 
+          "data": "invoice_date",
+          "render": function(data, type, row) {
+             return `<span class="text-muted" style="font-size: 0.85rem;">${data}</span>`;
+          }
+        },
         {
           "data": "grand_total",
-          "className": "text-end"
+          "className": "text-end",
+          "render": function(data, type, row) {
+              const amount = parseFloat(data).toLocaleString('en-IN', {minimumFractionDigits: 2});
+              return `<span class="fw-bold text-dark" style="font-size: 1.05rem;">₹ ${amount}</span>`;
+          }
         },
         {
           "data": null,
           "orderable": false,
-          "className": "text-center",
+          "className": "text-center px-4",
           "render": function (data, type, row, meta) {
             const pdfUrl = `{% url 'generate-invoice-pdf' 0 %}`.replace('0', row.id);
             const editUrl = `{% url 'edit-invoice' 0 %}`.replace('0', row.id);
             return `
               <div class="dropdown text-center">
-                <button type="button" class="btn action-menu-btn" data-bs-toggle="dropdown" aria-expanded="false" title="Actions">
-                  <i class="fa fa-ellipsis-v"></i>
+                <button type="button" class="btn action-menu-btn rounded-circle" data-bs-toggle="dropdown" aria-expanded="false" title="Actions" style="background: #f8f9fa; border: 1px solid #eee; width: 35px; height: 35px; padding: 0; display: inline-flex; align-items: center; justify-content: center; transition: all 0.2s;">
+                  <i class="fa fa-ellipsis-v text-secondary"></i>
                 </button>
-                <ul class="dropdown-menu dropdown-menu-end action-menu">
+                <ul class="dropdown-menu dropdown-menu-end action-menu shadow border-0" style="border-radius: 12px; padding: 8px;">
                   <li>
-                    <a href="${pdfUrl}" class="dropdown-item" target="_blank">
-                      <i class="fa fa-file-pdf-o text-info me-2"></i>View PDF
+                    <a href="${pdfUrl}" class="dropdown-item py-2 rounded" target="_blank" style="transition: all 0.2s;">
+                      <i class="fa fa-file-pdf-o text-info me-2"></i> View PDF
                     </a>
                   </li>
                   <li>
-                    <a href="${pdfUrl}?download=1" class="dropdown-item">
-                      <i class="fa fa-download text-success me-2"></i>Download PDF
+                    <a href="${pdfUrl}?download=1" class="dropdown-item py-2 rounded" style="transition: all 0.2s;">
+                      <i class="fa fa-download text-success me-2"></i> Download PDF
                     </a>
                   </li>
                   <li>
-                    <a href="${editUrl}" class="dropdown-item">
-                      <i class="fa fa-pencil text-warning me-2"></i>Edit Invoice
+                    <a href="${editUrl}" class="dropdown-item py-2 rounded" style="transition: all 0.2s;">
+                      <i class="fa fa-pencil text-warning me-2"></i> Edit Invoice
                     </a>
                   </li>
                   <li>
-                    <button type="button" class="dropdown-item delete-invoice-btn" data-id="${row.id}">
-                      <i class="fa fa-trash-o text-danger me-2"></i>Delete Invoice
+                    <button type="button" class="dropdown-item delete-invoice-btn py-2 rounded" data-id="${row.id}" style="transition: all 0.2s;">
+                      <i class="fa fa-trash-o text-danger me-2"></i> Delete Invoice
                     </button>
                   </li>
                 </ul>
