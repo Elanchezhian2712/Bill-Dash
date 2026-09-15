@@ -577,6 +577,10 @@ def generate_invoice_pdf(invoice):
         tax_words += " and " + num2words(total_tax_paisa, lang='en_IN').title() + " Paisa"
     tax_words += " Only"
     story.append(Paragraph(f"Tax Amount (in words): <b>INR {tax_words}</b>", style_normal))
+    story.append(Spacer(1, 0.5 * cm))
+
+    # Total Bundles
+    story.append(Paragraph(f"Total Bundles: <b>{invoice.total_bundles}</b>", style_normal))
 
     # --- Build the PDF document ---
     doc.build(story, onFirstPage=draw_page_frame, onLaterPages=draw_page_frame)
